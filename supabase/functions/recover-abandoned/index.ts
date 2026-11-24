@@ -259,7 +259,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     // Someone who asked for extras gets the standard line and silence, never a
     // marketing template inviting them back.
-    const inbound = await (await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${phone}&direction=eq.in&select=body&order=created_at.desc&limit=40`, { headers: H })).json().catch(() => []);
+    const inbound = await (await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${phone}&direction=eq.in&select=body&order=created_at.desc&limit=40`, { headers: H })).json().catch(() => []); // A0: words (what they said)
     if (Array.isArray(inbound) && inbound.some((m: any) => EROTIC_RE.test(String(m.body || "")))) {
       skipped.push({ phone, why: "asked for extras" });
       continue;

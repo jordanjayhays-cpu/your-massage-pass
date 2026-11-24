@@ -443,9 +443,12 @@ export function inboundText(body: string): string {
 const lastOutIndex = (rows: ThreadRow[]) => { for (let i = rows.length - 1; i >= 0; i--) if (rows[i].dir === "out" && rows[i].type !== "status_failed") return i; return -1; };
 // Every inbound row after our last outbound one: Hafeez's "Plzz" and "Send me"
 // arrived a second apart and are one thing to answer.
+// Relay (24 Nov 2026): a row of type "external" is something the customer
+// wrote to Jordan's own phone, which he forwarded to the bot. It is never
+// fresh words to answer: Jordan already has them.
 export function newMessages(thread: ThreadRow[], text: string, viaVoice = false): string[] {
   const rows = Array.isArray(thread) ? thread : [];
-  const fresh = rows.slice(lastOutIndex(rows) + 1).filter((r) => r.dir === "in").map((r) => inboundText(r.body)).filter(Boolean);
+  const fresh = rows.slice(lastOutIndex(rows) + 1).filter((r) => r.dir === "in" && r.type !== "external").map((r) => inboundText(r.body)).filter(Boolean);
   const own = String(text || "").trim();
   if (own && !fresh.some((f) => f.includes(own))) fresh.push(viaVoice ? `(voice note, transcribed automatically) ${own}` : own);
   return fresh.slice(-6);
@@ -514,7 +517,7 @@ export function buildTurnContext(i: TurnContextInput): string {
   const lastOut = cut >= 0 ? String(rows[cut].body || "") : "";
   const lines = history.map((r) => {
     if (r.type === "status_failed") return `[${shortAt(r.at)}] (our previous message was not delivered)`;
-    const who = r.dir === "in" ? "Customer" : team && String(r.body || "").startsWith(team) ? "Massage Club (team)" : "Massage Club";
+    const who = r.dir === "in" ? (r.type === "external" ? "Customer (to Jordan's own phone, forwarded by him)" : "Customer") : team && String(r.body || "").startsWith(team) ? "Massage Club (team)" : "Massage Club";
     return `[${shortAt(r.at)}] ${who}: ${oneLine(r.dir === "in" ? inboundText(r.body) : r.body)}`;
   });
   const fresh = newMessages(rows, i.text, i.viaVoice);

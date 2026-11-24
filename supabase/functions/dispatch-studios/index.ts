@@ -913,7 +913,7 @@ async function restingInfo(cands: Array<{ id: string; wa: string }>): Promise<Ma
   // order: PostgREST stops at 1000 rows whatever the limit, so the newest come first.
   const [rows, msgs, unrestRaw] = await Promise.all([
     sq(`request_dispatch?partner_id=in.(${ids.map(encodeURIComponent).join(",")})&order=created_at.desc&limit=5000&select=request_id,partner_id,outcome,sent_at,created_at,replied_at,accepted_at,offered_at,offered_time,offered_times,quoted_price,customer_answer`),
-    was.length ? sq(`wa_messages?phone=in.(${was.join(",")})&direction=eq.in&order=created_at.desc&limit=5000&select=phone,body,created_at`) : Promise.resolve([]),
+    was.length ? sq(`wa_messages?phone=in.(${was.join(",")})&direction=eq.in&order=created_at.desc&limit=5000&select=phone,body,created_at`) : Promise.resolve([]), // A0: words (the studio rest rule reads what they said)
     appSecret("DISPATCH_UNREST"),
   ]);
   if (!Array.isArray(rows)) { console.log("[dispatch] resting: could not read asks", String(rows).slice(0, 200)); return null; }
@@ -955,7 +955,7 @@ async function dispatchBlocked(r: Record<string, unknown>, ignoreWords: boolean)
   const phone = toWa(String(row.client_phone || r.client_phone || ""));
   const since = String(row.created_at || r.created_at || "");
   const said = phone && since && !ignoreWords
-    ? await sq(`wa_messages?phone=eq.${phone}&direction=eq.in&created_at=gt.${encodeURIComponent(since)}&order=created_at.asc&limit=200&select=body`)
+    ? await sq(`wa_messages?phone=eq.${phone}&direction=eq.in&created_at=gt.${encodeURIComponent(since)}&order=created_at.asc&limit=200&select=body`) // A0: words (what the customer said)
     : [];
   const b = blockedReason(row.stage, (Array.isArray(said) ? said : []).map((m: any) => m?.body), ignoreWords);
   return b ? { ...b, stage: String(row.stage || ""), note: String(row.stage_note || "") } : null;
@@ -1065,7 +1065,7 @@ async function studioShutNow(toDigits: string): Promise<string | null> {
   // nothing. 160 of our studios have no hours and silence is not a closure.
   let why: string | null = p ? closedNowReason(p.opening_hours) : null;
   if (why) {
-    const lastIn = await sq(`wa_messages?phone=eq.${d}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`);
+    const lastIn = await sq(`wa_messages?phone=eq.${d}&direction=eq.in&or=(msg_type.is.null,msg_type.neq.external)&order=created_at.desc&limit=1&select=created_at`);
     const t = Array.isArray(lastIn) && lastIn[0]?.created_at ? Date.parse(lastIn[0].created_at) : 0;
     if (t && Date.now() - t < REPLY_GRACE_MS) why = null; // they just wrote; answer them
   }
@@ -1331,7 +1331,7 @@ async function sendStudioNote(to: string, text: string, short: string | NoteShor
   // actually have been written to.
   const shut = await studioShutNow(to);
   if (shut) return { how: "skipped", ok: false, why: shut };
-  const lastIn = await sq(`wa_messages?phone=eq.${to}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`);
+  const lastIn = await sq(`wa_messages?phone=eq.${to}&direction=eq.in&or=(msg_type.is.null,msg_type.neq.external)&order=created_at.desc&limit=1&select=created_at`);
   const lastAt = Array.isArray(lastIn) && lastIn[0]?.created_at ? Date.parse(lastIn[0].created_at) : 0;
   // v48: and nothing lands on a studio at night. The won and notify ops run
   // before the request hours check, so a stand-down could reach the 160
@@ -1642,7 +1642,7 @@ async function reachableCustomer(r: Record<string, unknown>): Promise<{ ok: bool
   if (String(r.contact_email || "").trim()) return { ok: true, how: "email" };
   const phone = toWa(String(r.client_phone || ""));
   if (phone) {
-    const prior = await sq(`wa_messages?phone=eq.${phone}&direction=eq.in&limit=1&select=id`);
+    const prior = await sq(`wa_messages?phone=eq.${phone}&direction=eq.in&or=(msg_type.is.null,msg_type.neq.external)&limit=1&select=id`);
     if (Array.isArray(prior) && prior.length) return { ok: true, how: "whatsapp" };
   }
   return { ok: false, how: "none" };
@@ -2130,7 +2130,7 @@ async function handleRequest(req: Request): Promise<Response> {
     const to = toWa(String(c.phone || ""));
     if (!to || !c.text) return new Response(JSON.stringify({ error: "send.phone and send.text required" }), { status: 200, headers: { "Content-Type": "application/json" } });
     if (isTestPhone(to)) return new Response(JSON.stringify({ ok: false, reason: "test number" }), { status: 200, headers: { "Content-Type": "application/json" } });
-    const prior = await sq(`wa_messages?phone=eq.${to}&direction=eq.in&limit=1&select=id`);
+    const prior = await sq(`wa_messages?phone=eq.${to}&direction=eq.in&or=(msg_type.is.null,msg_type.neq.external)&limit=1&select=id`);
     if (!Array.isArray(prior) || !prior.length) return new Response(JSON.stringify({ ok: false, reason: "number never wrote to the bot" }), { status: 200, headers: { "Content-Type": "application/json" } });
     const shut = await studioShutNow(to);
     if (shut) return new Response(JSON.stringify({ ok: false, reason: `studio is shut: ${shut}` }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -2145,7 +2145,7 @@ async function handleRequest(req: Request): Promise<Response> {
     // as if the studio had read it. Refused instead; a note that has to arrive
     // goes through studio_note, which has the template fallback.
     if (isStudio) {
-      const lastIn = await sq(`wa_messages?phone=eq.${to}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`);
+      const lastIn = await sq(`wa_messages?phone=eq.${to}&direction=eq.in&or=(msg_type.is.null,msg_type.neq.external)&order=created_at.desc&limit=1&select=created_at`);
       const lastAt = Array.isArray(lastIn) && lastIn[0]?.created_at ? Date.parse(lastIn[0].created_at) : 0;
       if (!lastAt || Date.now() - lastAt >= 23.5 * 3600e3) return new Response(JSON.stringify({ ok: false, reason: "window shut, use studio_note" }), { status: 200, headers: { "Content-Type": "application/json" } });
     }

@@ -58,13 +58,14 @@
 // wa-bot v29: fast lane, tappable areas, therapists get a real answer.
 // wa-bot - the WhatsApp booking bot. Called only by the whatsapp-webhook relay.
 
-import { LOST_ES_RE, NO_ENGLISH_RE, genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea, askBand, madridInstant, madridMidnight, resolveRequestDate } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/6715b8a/supabase/functions/wa-bot/copy.ts";
+import { LOST_ES_RE, NO_ENGLISH_RE, genderWanted, genderBare, offerMatchesAsk, CONFIRM_LATER_RE, confirmLaterRemindAt, EMAIL_REFUSE_RE, firstNameFromProfile, parseQuotedPrice, euro, dayLabelFor, parseName, HOME_VISIT_RE, LINK_ONLY_RE, studioGenderReply, JORDAN_MAIN_NUMBER, AD_OPENER_RE, UNSURE_RE, ZONEQ_RE, detectDay, detectTime, strongSpanish, isEmail, stripAcc, TIME_RE, BACK_RE, HI_RE, BOOKAGAIN_RE, digitsOf, CHANGE_RE, GOODBYE_RE, CANCEL_RE, ARRIVED_RE, NOSHOW_RE, mcMadridHour, parseOfferedTime, parseOfferedTimes, AUTOREPLY_RE, EMAIL_IN_TEXT_RE, EROTIC_RE, MODESTY_RE, BLOCK_LINE_EN, BLOCK_LINE_ES, JOB_RE, ANY_RE, OTHERTYPE_RE, PRICEQ_RE, PHOTOQ_RE, QUESTION_RE, looksLikeQuestion, HOWWORKS_RE, SERVICEQ_RE, ACK_ONLY_RE, MAIN_SERVICES, MORE_SERVICES, ALL_SERVICES, SVC_ES, trSvc, trSvcLow, AREAS, AREA_ROWS, HOURS, COPY, SERVICE_HINTS, detectService, detectArea, askBand, madridInstant, madridMidnight, resolveRequestDate, HOURS_STATEMENT_RE } from "https://raw.githubusercontent.com/jordanjayhays-cpu/your-massage-pass/6715b8a/supabase/functions/wa-bot/copy.ts";
 import { readMessage, type Reading as Reading2 } from "./read.ts";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { letterRefCandidates, letterBajaIntent, BAJA_ONLY_RE, LETTER_BAJA_ACK_ES, LETTER_BAJA_ACK_EN } from "./letters_reply.ts";
 import { MKT_COPY, mktAskBody, mktWording, mktButtons, mktTap, stopIntent, stopReply, bareAnswer } from "./consent.ts";
 import { runCoreTurn, coreTakes, parseCoreMode, validateDetails, madridCalendar, DAY_CLEARS, CORE_MODEL, type CoreCtx, type CoreMode, type CoreBooking, type StudioPick } from "./agent_core.ts";
-const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
+import { parseRelayMode, JORDAN_OWN, detectRelay, relayBase, relayParse, relayRank, relayRowText, relayListBody, studioRelayPlan, studioActions, studioWrites, customerRelayPlan, customerActions, customerWrites, relayStoredText, relayRelativeWords, relayNeedsEnglish, relayReadText, relayActionWords, RELAY_LABELS, OUR_LINE_RE, STUDIO_FOLLOWS, RELAY_MAX_CANDS, type RelayMode, type RelayCand, type RelayId } from "./relay.ts";
+import { offerTplParams, renderOfferTpl, offerTplAudience, offerTplPayloads, parseOfferTplMode, OFFER_TPL_NAME, type OfferTplMode } from "./offer_tpl.ts";const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
 let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 let AI_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
 const AI_MODEL = "claude-haiku-4-5-20251001";
@@ -314,8 +315,9 @@ async function copyStudioSend(to: string, channel: "WhatsApp" | "Email", logBody
 const sendText = (to: string, body: string, opts: { manual?: boolean } = {}) => waSend(to, { type: "text", text: { body, preview_url: false } }, body, "text", opts);
 const sendButtons = (to: string, body: string, buttons: Array<{ id: string; title: string }>, opts: { manual?: boolean } = {}) =>
   waSend(to, { type: "interactive", interactive: { type: "button", body: { text: body }, action: { buttons: buttons.slice(0, 3).map((b) => ({ type: "reply", reply: { id: b.id, title: b.title.slice(0, 20) } })) } } }, body + " [" + buttons.map((b) => b.title).join("/") + "]", "buttons", opts);
-const sendList = (to: string, body: string, button: string, rows: Array<{ id: string; title: string; description?: string }>) =>
-  waSend(to, { type: "interactive", interactive: { type: "list", body: { text: body }, action: { button: button.slice(0, 20), sections: [{ title: "Massage Club", rows: rows.slice(0, 10).map((r) => ({ id: r.id, title: r.title.slice(0, 24), description: (r.description || "").slice(0, 72) })) }] } } }, body + " [" + rows.map((r) => r.title).join("/") + "]", "list");
+// Relay (24 Nov 2026): opts.manual, so a list to Jordan is never translated.
+const sendList = (to: string, body: string, button: string, rows: Array<{ id: string; title: string; description?: string }>, opts: { manual?: boolean } = {}) =>
+  waSend(to, { type: "interactive", interactive: { type: "list", body: { text: body }, action: { button: button.slice(0, 20), sections: [{ title: "Massage Club", rows: rows.slice(0, 10).map((r) => ({ id: r.id, title: r.title.slice(0, 24), description: (r.description || "").slice(0, 72) })) }] } } }, body + " [" + rows.map((r) => r.title).join("/") + "]", "list", opts);
 // v197 (10 Oct, Jordan: "can you respond in romanian please for him?").
 // Alexandru came in from the ad writing Romanian. Over two days he wrote ten
 // messages, most of them some form of "Traslator. Romano", and was answered
@@ -619,8 +621,21 @@ async function saveSession(s: Session) {
 
 // v39: WhatsApp delivers free text only within 24h of the person's last
 // message; after that only approved templates arrive.
+// Relay A0 (24 Nov 2026): a row with msg_type 'external' is someone's words
+// that reached Jordan's own phone and that he forwarded to the bot (the relay
+// below). The person never wrote to the bot, so it never opens their 24 hours:
+// every read that decides whether free text can go, or whether a number "has
+// written to the bot", leaves external rows out. A NULL msg_type stays in
+// (or=), so a future writer that forgets the type cannot close a window.
+// Reads that only want what was said (the inbox text, the language, the
+// corpus) still see external rows; lastInboundAnyMs is "did they answer".
 async function lastInboundMs(phone: string): Promise<number | null> {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${encodeURIComponent(digitsOf(phone))}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`, { headers: H() });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${encodeURIComponent(digitsOf(phone))}&direction=eq.in&or=(msg_type.is.null,msg_type.neq.external)&order=created_at.desc&limit=1&select=created_at`, { headers: H() });
+  const rows = await r.json().catch(() => []);
+  return Array.isArray(rows) && rows[0]?.created_at ? Date.parse(rows[0].created_at) : null;
+}
+async function lastInboundAnyMs(phone: string): Promise<number | null> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${encodeURIComponent(digitsOf(phone))}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`, { headers: H() }); // A0: words (an answer, relayed or not)
   const rows = await r.json().catch(() => []);
   return Array.isArray(rows) && rows[0]?.created_at ? Date.parse(rows[0].created_at) : null;
 }
@@ -1731,10 +1746,10 @@ const sameText = (a: string, b: string) => a.replace(/\s+/g, " ").trim().toLower
 
 // v141 (Jordan, 3 Oct): the reply page shows the WHOLE conversation, with the
 // day and the Madrid time on every message, not just the last dozen.
-async function fullThread(phone: string): Promise<Array<{ id: number; dir: string; body: string; at: string; en: string | null }>> {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&order=created_at.desc&limit=500&select=id,direction,body,created_at,body_en`, { headers: H() });
+async function fullThread(phone: string): Promise<Array<{ id: number; dir: string; body: string; at: string; en: string | null; type: string }>> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&order=created_at.desc&limit=500&select=id,direction,body,created_at,body_en,msg_type`, { headers: H() });
   const rows = await r.json().catch(() => []);
-  return (Array.isArray(rows) ? rows : []).reverse().map((x: any) => ({ id: Number(x.id) || 0, dir: String(x.direction || ""), body: String(x.body || ""), at: String(x.created_at || ""), en: typeof x.body_en === "string" ? x.body_en : null }));
+  return (Array.isArray(rows) ? rows : []).reverse().map((x: any) => ({ id: Number(x.id) || 0, dir: String(x.direction || ""), body: String(x.body || ""), at: String(x.created_at || ""), en: typeof x.body_en === "string" ? x.body_en : null, type: String(x.msg_type || "") }));
 }
 const madridDay = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long" }).format(new Date(iso));
 const madridTime = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
@@ -1745,7 +1760,7 @@ function buttonPresets(es: boolean): Array<[string, string[]]> {
     ? [["Sí / No", ["Sí", "No"]], ["Hoy / Mañana", ["Hoy", "Mañana", "Otro día"]], ["Franja", ["Mañana (10-13)", "Tarde (13-18)", "Noche (18-21)"]], ["Reservar", ["Sí, reservar", "Otra hora"]]]
     : [["Yes / No", ["Yes", "No"]], ["Today / Tomorrow", ["Today", "Tomorrow", "Another day"]], ["Time of day", ["Morning (10-13)", "Afternoon (13-18)", "Evening (18-21)"]], ["Book it", ["Yes, book it", "Another time"]]];
 }
-function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string; body: string; at?: string }>; draft: string; open: boolean; hoursLeft: number | null; muted: boolean; sent: boolean; error: string; action: string; inbox: string; es: boolean; studio?: boolean; trans?: Map<number, string>; notice?: string; mediaSig?: string }): string {
+function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string; body: string; at?: string; type?: string }>; draft: string; open: boolean; hoursLeft: number | null; muted: boolean; sent: boolean; error: string; action: string; inbox: string; es: boolean; studio?: boolean; trans?: Map<number, string>; notice?: string; mediaSig?: string }): string {
   const first = o.studio ? String(o.name || "STUDIO") : (String(o.name || "").trim().split(/\s+/)[0] || "");
   const pill = o.muted ? `<span class="pill mute">MUTED</span>`
     : o.open ? `<span class="pill ok">${o.hoursLeft !== null ? `${Math.floor(o.hoursLeft)}h left` : "OPEN"}</span>`
@@ -1784,7 +1799,9 @@ function replyHtml(o: { phone: string; name: string; thread: Array<{ dir: string
     if (day) lastDay = day;
     const time = m.at ? `<span class="tm">${madridTime(m.at)}</span>` : "";
     const enLine = en ? `<span class="en">EN: ${esc(en)}</span>` : "";
-    return `${divider}<div class="msg ${them ? "them" : "us"}"><span class="who">${them ? esc(first || "THEM").toUpperCase() : "MASSAGE CLUB"}</span>${esc(body)}${player}${enLine}${btns}${time}</div>`;
+    // Relay A0: words that reached Jordan's own phone and that he forwarded.
+    const via = them && m.type === "external" ? " (VIA YOUR PHONE)" : "";
+    return `${divider}<div class="msg ${them ? "them" : "us"}"><span class="who">${them ? esc(first || "THEM").toUpperCase() + via : "MASSAGE CLUB"}</span>${esc(body)}${player}${enLine}${btns}${time}</div>`;
   }).join("");
   const notes = (o.notice ? `<div class="note done">${o.notice}</div>` : "")
     + (o.sent ? `<div class="note done">Sent from the bot number. The bot carries on from here.</div>` : "")
@@ -1984,7 +2001,7 @@ async function inboxPage(url: URL): Promise<Response> {
   if (sig !== (await replySig("inbox"))) return pageOut(url, pageShell("Link not valid", "", `<p class="empty">This link is not valid.</p>`), 403);
   const tab = url.searchParams.get("tab") === "studios" ? "studios" : "customers";
   const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?created_at=gte.${since}&order=created_at.desc&limit=3000&select=phone,direction,body,created_at`, { headers: H() });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?created_at=gte.${since}&order=created_at.desc&limit=3000&select=phone,direction,body,created_at,msg_type`, { headers: H() });
   const rows: any[] = await r.json().catch(() => []);
   const byPhone = new Map<string, { last: any; lastIn: any; n: number }>();
   for (const m of Array.isArray(rows) ? rows : []) {
@@ -1992,7 +2009,9 @@ async function inboxPage(url: URL): Promise<Response> {
     if (!p) continue;
     const e = byPhone.get(p) || { last: null, lastIn: null, n: 0 };
     if (!e.last) e.last = m;
-    if (!e.lastIn && m.direction === "in") e.lastIn = m;
+    // Relay A0: words relayed from Jordan's phone (external) never open the
+    // window, and never leave the chat "waiting" on the bot: Jordan has them.
+    if (!e.lastIn && m.direction === "in" && m.msg_type !== "external") e.lastIn = m;
     e.n++;
     byPhone.set(p, e);
   }
@@ -2020,7 +2039,7 @@ async function inboxPage(url: URL): Promise<Response> {
     const studioName = studioOf.get(p);
     const inAt = e.lastIn ? Date.parse(e.lastIn.created_at) : 0;
     const left = inAt ? (inAt + 24 * 3600 * 1000 - Date.now()) / 3600000 : 0;
-    items.push({ phone: p, name: studioName || s.wa_name || "", studio: !!studioName, waiting: e.last.direction === "in", open: left > 0.5, hoursLeft: Math.max(0, left), lastBody: String(e.last.body || ""), lastDir: String(e.last.direction || ""), at: Date.parse(e.last.created_at), step: String(s.step || "") });
+    items.push({ phone: p, name: studioName || s.wa_name || "", studio: !!studioName, waiting: e.last.direction === "in" && e.last.msg_type !== "external", open: left > 0.5, hoursLeft: Math.max(0, left), lastBody: String(e.last.body || ""), lastDir: String(e.last.direction || ""), at: Date.parse(e.last.created_at), step: String(s.step || "") });
   }
   items.sort((a, b) => Number(b.waiting) - Number(a.waiting) || b.at - a.at);
   const shown = items.filter((i) => (tab === "studios") === i.studio);
@@ -2141,7 +2160,7 @@ async function replyPage(req: Request, url: URL): Promise<Response> {
   const studio = await findPartnerByNumber(phone);
   // The chat's language is what the customer is writing NOW: Stonelove started
   // in English and switched to Spanish, and his session still said English.
-  const lastIn = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${phone}&direction=eq.in&order=created_at.desc&limit=3&select=body`, { headers: H() }).then((r) => r.json()).catch(() => []);
+  const lastIn = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${phone}&direction=eq.in&order=created_at.desc&limit=3&select=body`, { headers: H() }).then((r) => r.json()).catch(() => []); // A0: words (the language they write in)
   const recentEs = (Array.isArray(lastIn) ? lastIn : []).some((m: any) => strongSpanish(String(m.body || "").replace(/\s*\[via ad\]$/, "")));
   const es = !!studio || recentEs || s.data?.lang === "es";
   const name = studio ? studio.business_name : (s.wa_name || "");
@@ -4239,7 +4258,7 @@ const CUSTOMER_WINDOW_MS = 23.5 * 3600e3;
 async function waWindowOpen(phone: unknown): Promise<boolean> {
   const p = digitsOf(String(phone || ""));
   if (!p) return false;
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${p}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`, { headers: H() });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${p}&direction=eq.in&or=(msg_type.is.null,msg_type.neq.external)&order=created_at.desc&limit=1&select=created_at`, { headers: H() });
   const rows = await r.json().catch(() => []);
   const last = Array.isArray(rows) && rows[0]?.created_at ? Date.parse(String(rows[0].created_at)) : 0;
   return last > 0 && Date.now() - last < CUSTOMER_WINDOW_MS;
@@ -6807,6 +6826,10 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     svc: trSvcLow(custSvc(req.service_name), L), price: priceLine, above, address: pc.address, far,
   });
   let offerVia = "none";
+  // Part B (OFFER_TEMPLATE, default off): a customer whose 24 hours have
+  // closed also gets the offer as the request_update_v1 template, alongside
+  // the email (a held email takes the template with it, sendHeldOfferEmail).
+  let tplSent = false;
   if (clientNum && await waWindowOpen(clientNum) && await sendButtons(clientNum, offerText, offerButtons(L, rowId, time))) offerVia = "whatsapp";
   if (offerVia === "none") {
     let email = String(req.contact_email || "").trim();
@@ -6825,7 +6848,14 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
       }).catch(() => null);
       if (hold && hold.ok) offerVia = "email_pending";
     }
+    if (offerVia === "none" && clientNum) {
+      try { tplSent = !!(await sendOfferTemplate(req, clientNum, L, rowId, { studio: partner.business_name, neighbourhood: pc.neighbourhood, slotAtMs: slotAt, time, mins: statedMins, price: written ? priceNum : null, listed: !written && priceNum > 0 ? priceNum : null })); }
+      catch (e) { console.log("[wa] offer template failed", String(e)); }
+    }
     if (offerVia === "none" && email && await emailOffer({ ...req, contact_email: email }, L, rowId, partner.business_name, time, day, pc.address, priceLine)) offerVia = "email";
+    // The template on its own reached them: recorded as WhatsApp (the
+    // customer_offer_via CHECK allows whatsapp, email, email_pending).
+    if (offerVia === "none" && tplSent) offerVia = "whatsapp";
   }
   // v219: what carried it, on the claimed row; a send that reached nobody
   // gives the claim back, so a later path can try again.
@@ -6848,7 +6878,9 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
     // v204: sentAt and slotAt drive the one follow-up and the lapse
     // (chaseOffers); via says whether WhatsApp buttons carried it; miss marks a
     // time outside the window, which a time inside it may replace.
-    cs.data.offer = { row: rowId, time, studio: partner.business_name, request: req.id, day: opts.dayHint || offerDay || null, sentAt: new Date().toISOString(), slotAt: slotAt !== null ? new Date(slotAt).toISOString() : null, via: offerVia, miss: !fits };
+    // Part B: a template (with or without the email) is never followed up by
+    // the WhatsApp chase, which skips any via but "whatsapp".
+    cs.data.offer = { row: rowId, time, studio: partner.business_name, request: req.id, day: opts.dayHint || offerDay || null, sentAt: new Date().toISOString(), slotAt: slotAt !== null ? new Date(slotAt).toISOString() : null, via: tplSent ? "template" : offerVia, miss: !fits };
     if (offerVia !== "none") {
       const prev: string[] = cs.data.offersShown && Number(cs.data.offersShown.request) === Number(req.id) ? (cs.data.offersShown.rows || []).map(String) : [];
       cs.data.offersShown = { request: req.id, rows: [...prev.filter((x) => x !== String(rowId)), String(rowId)].slice(-12) };
@@ -6893,7 +6925,7 @@ async function forwardOffer(req: any, partner: { id: string; business_name: stri
   await founderCard(`⏰ ${partner.business_name} offers ${time} · #${req.id}`, {
     badge: "OFFER FORWARDED",
     title: `${partner.business_name} can do ${time} ${day}`,
-    paras: [`Sent to ${req.first_name || "the customer"} ${offerVia === "email" ? "by email, with a Yes / No page" : offerVia === "email_pending" ? "by email with a Yes / No page, held up to 3 minutes so it can carry the price the studio is being asked for" : "with Yes / Another time / Closer or cheaper buttons"}. Nothing is booked until they tap Yes; then the studio gets the confirmation in writing and the other studios are stood down.`],
+    paras: [`Sent to ${req.first_name || "the customer"} ${offerVia === "email" ? "by email, with a Yes / No page" : offerVia === "email_pending" ? "by email with a Yes / No page, held up to 3 minutes so it can carry the price the studio is being asked for" : tplSent ? "by the request_update_v1 template (their 24 hours had closed)" : "with Yes / Another time / Closer or cheaper buttons"}${tplSent && offerVia === "email" ? ", and by the request_update_v1 template on WhatsApp (their 24 hours had closed)" : ""}. Nothing is booked until they tap Yes; then the studio gets the confirmation in writing and the other studios are stood down.`],
     quote: freeText, waNum: clientNum, studioNum: studioFrom, studioName: partner.business_name,
   });
   return offerVia;
@@ -7211,7 +7243,8 @@ async function chaseOffers(only = ""): Promise<{ chased: number; lapsed: number 
     // one went out, is an answer. A reminder on top of an answer is noise.
     const tq = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${Number(d.request_id)}&customer_answer=not.is.null&limit=1&select=id`, { headers: H() });
     const tapped = ((await tq.json().catch(() => [])) || []).length > 0;
-    const lastIn = await lastInboundMs(phone);
+    // Relay A0: an answer they gave on Jordan's phone (relayed) is an answer too.
+    const lastIn = await lastInboundAnyMs(phone);
     if (tapped || (lastIn !== null && lastIn > sent) || o.via !== "whatsapp") continue;
     // Marked before sending, so a failure cannot become a loop. The session is
     // read again first, so a tap that landed during the sweep is never undone.
@@ -7464,6 +7497,41 @@ async function emailOffer(req: any, L: string, rowId: string, studio: string, ti
   else await logEvent(digitsOf(req.client_phone || "") || "web", "offer_emailed", { request_id: req.id, row: rowId, studio, time });
   return ok;
 }
+// Part B (24 Nov 2026): the offer as the request_update_v1 template
+// (offer_tpl.ts), for a customer whose 24 hour window has closed. Behind
+// app_secrets OFFER_TEMPLATE (off | test | on), default off: test reaches
+// Jordan's own two numbers only. Never to a test contact, a friend tester, a
+// held or muted customer; and if Meta files it as MARKETING, only to a verified
+// yes to offers (mktTemplateGate). Not approved by Meta yet: a send that fails
+// that way falls back to the email alone, and Jordan is told once.
+let offerTplCache: { v: OfferTplMode; at: number } = { v: "off", at: 0 };
+async function offerTplMode(): Promise<OfferTplMode> {
+  if (offerTplCache.at && Date.now() - offerTplCache.at < 60e3) return offerTplCache.v;
+  offerTplCache = { v: parseOfferTplMode(await appSecret("OFFER_TEMPLATE").catch(() => "")), at: Date.now() };
+  return offerTplCache.v;
+}
+let offerTplToldNotLive = false;
+async function sendOfferTemplate(req: any, to: string, L: string, rowId: string, o: { studio: string; neighbourhood?: string; slotAtMs: number | null; time: string; mins: number; price: number | null; listed: number | null }): Promise<boolean> {
+  const mode = await offerTplMode();
+  if (mode === "off") return false;
+  const phone = digitsOf(to);
+  const s = await getSession(phone);
+  if (!offerTplAudience(mode, { phone, testCustomer: offerTestCustomer(req), held: heldNum(phone) || heldMail(req?.contact_email), muted: s.step === "muted" })) return false;
+  // Only for a closed window: an open one gets the buttons.
+  if (await waWindowOpen(phone)) return false;
+  const gate = await mktTemplateGate(phone, OFFER_TPL_NAME, L);
+  if (!gate.ok) { console.log(`[wa] offer template not sent to ${phone}: ${gate.why || "consent gate"}`); await logEvent(phone, "offer_template_held", { request_id: req?.id, row: rowId, why: gate.why || null, category: gate.category }); return false; }
+  const TL = L === "es" ? "es" : "en";
+  const params = offerTplParams(TL, { firstName: String(req?.first_name || ""), studio: o.studio, neighbourhood: o.neighbourhood, slotAtMs: o.slotAtMs, time: o.time, svc: trSvcLow(custSvc(req?.service_name), TL), mins: o.mins, price: o.price, listed: o.listed }, (ms, lang) => (lang === "es" ? LONG_ES : LONG_EN).format(new Date(ms)));
+  if (!params) return false;
+  const ok = await sendTemplate(phone, OFFER_TPL_NAME, TL, params, offerTplPayloads(rowId), renderOfferTpl(TL, params));
+  await logEvent(phone, ok ? "offer_template_sent" : "offer_template_failed", { request_id: req?.id, row: rowId, mode, why: ok ? null : String(lastWaError || "").slice(0, 200) });
+  if (!ok && !offerTplToldNotLive) {
+    offerTplToldNotLive = true;
+    await notifyJordanWa(`The ${OFFER_TPL_NAME} offer template did not go to +${phone} (${TPL_NOT_LIVE.test(lastWaError) ? "not approved by Meta yet, or a parameter it refused" : "send failed"}). They still got the offer by email if there is one. Said once per worker.`, phone).catch(() => {});
+  }
+  return ok;
+}
 // v219 (19 Nov, #126): an offer email forwardOffer held for the studio's price
 // (customer_offer_via 'email_pending'). The claim (email_pending -> email) is
 // the guard, so the price capture and the settle sweep can never both send
@@ -7490,8 +7558,17 @@ async function sendHeldOfferEmail(rowId: string, why: string): Promise<boolean> 
   const day = rowDayLabel(row, L) || offerDayFromText(String(row.reply_text || ""), L) || dayLabelFor(req.day1, req.message_text, L) || (L === "es" ? "ese día" : "that day");
   const quoted = Number(row.quoted_price || 0);
   let priceLine = quoted > 0 ? COPY[L].priceLine(quoted, askedMins(row, req), Number(row.discount_pct || 0) > 0) : "";
-  if (!priceLine) { const lp = await listedPrice(String(row.partner_id || ""), String(req.service_name || ""), askedMins(row, req)); if (lp) priceLine = listedPriceLine(L, lp); }
+  let listedNum = 0;
+  if (!priceLine) { const lp = await listedPrice(String(row.partner_id || ""), String(req.service_name || ""), askedMins(row, req)); if (lp) { priceLine = listedPriceLine(L, lp); listedNum = Number(lp.price) || 0; } }
   const ok = await emailOffer(req, L, String(row.id), studio, time, day, pc.address, priceLine);
+  // Part B (OFFER_TEMPLATE, default off): the template waited with this email
+  // and goes with it, carrying the same price.
+  const cnum = digitsOf(String(req.client_phone || ""));
+  if (ok && cnum) {
+    const slot = Date.parse(String(row.offer_slot_at || ""));
+    try { await sendOfferTemplate(req, cnum, L, String(row.id), { studio, neighbourhood: pc.neighbourhood, slotAtMs: Number.isFinite(slot) ? slot : null, time, mins: askedMins(row, req), price: quoted > 0 ? quoted : null, listed: listedNum > 0 ? listedNum : null }); }
+    catch (e) { console.log("[wa] offer template with the held email failed", String(e)); }
+  }
   await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?id=eq.${encodeURIComponent(rowId)}`, { method: "PATCH", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify(ok ? (quoted > 0 ? { offer_price_eur: quoted } : {}) : { customer_offered_at: null, customer_offered_time: null, customer_offer_via: null }) }).catch(() => null);
   await logEvent(digitsOf(String(req.client_phone || "")) || "web", "offer_email_released", { request_id: String(req.id), row: String(row.id), why, price: quoted > 0 ? quoted : null, sent: ok });
   if (!ok) {
@@ -7877,6 +7954,15 @@ async function acceptOffer(rowId: string, from: string, L: string, s: Session | 
     const rqs = await rq.json().catch(() => []);
     const cur = Array.isArray(rqs) && rqs[0] ? rqs[0] : null;
     if (!cur || String(cur.partner_id || "") !== String(row.partner_id)) { await say(COPY[L].offerGone); await closeOffer(); return false; }
+    // Part B review (critique X5): a second Yes on the booking itself (the
+    // offer email's Yes and then the template's, or the same button twice) is
+    // not a time change. It stands, nothing is sent to anyone, as the offer
+    // page already does for a second Yes.
+    if (String(req.confirmed_time || "") === String(row.offered_time || "")) {
+      await logEvent(from || "web", "offer_yes_again", { id: req.id, row: rowId, via });
+      await closeOffer();
+      return true;
+    }
     const cday = s?.data.offer?.day || cur.confirmed_day || req.day1 || "";
     const cwhen = [cday, row.offered_time].filter(Boolean).join(" ");
     // v219 (19 Nov, #126): client_confirmed_at records the customer's own tap
@@ -11767,7 +11853,7 @@ async function coreThread(phone: string, limit: number): Promise<Array<{ id: num
 // anything else runs), so a later message is "newer" even when two webhooks
 // race: Hafeez's "Plzz" and "Send me" were logged a second apart.
 async function coreInboundId(phone: string, text: string): Promise<number> {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&direction=eq.in&order=id.desc&limit=5&select=id,body`, { headers: H() });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${digitsOf(phone)}&direction=eq.in&or=(msg_type.is.null,msg_type.neq.external)&order=id.desc&limit=5&select=id,body`, { headers: H() });
   const rows = await r.json().catch(() => []);
   if (!Array.isArray(rows) || !rows.length) return 0;
   const clean = (b: string) => String(b || "").replace(/\s*\[via ad\]$/i, "").replace(/^\[voice note[^\]]*\]\s*/i, "").trim();
@@ -12053,6 +12139,11 @@ const handleTurn = async (req: Request) => {
   }
   let raw = "";
   try { raw = await req.text(); } catch { /* empty body */ }
+  // Relay (24 Nov 2026, critique blocker 1): the body and the two headers that
+  // can prove this request came from Meta (X-Hub-Signature-256) or from our
+  // whatsapp-webhook relay (x-mc-relay-key), kept on this turn only. Read by
+  // relayVerified, and only when Jordan's own numbers forward something.
+  { const st: any = TURN.getStore(); if (st) { st.raw = raw; st.hubSig = req.headers.get("x-hub-signature-256") || ""; st.relayKey = req.headers.get("x-mc-relay-key") || ""; } }
   const res = await handleInner(new Request(req.url, { method: req.method, headers: req.headers, body: raw || null }));
   try {
     const p = raw ? JSON.parse(raw) : null;
@@ -12104,6 +12195,696 @@ export function start(cfg: { waToken?: string; resendKey?: string; opsKey?: stri
   if (cfg.signKey) SIGN_KEY = cfg.signKey;
   Deno.serve(handler);
 }
+
+// ---- relay (start) ----
+// Relay (24 Nov 2026, Jordan: "i shouldn't have to report everything from my
+// convos, this should be rare not expectations"; he chose "Bot number +
+// forwarding"). When a studio or a customer answers on Jordan's own phone, he
+// forwards the message to the bot number and taps who wrote it. Behind
+// app_secrets RELAY (off | test | on, relayMode), default off. The pure
+// readers live in relay.ts; tests/relay.mjs lifts this block.
+//
+// What it does, and what it never does:
+// - Each forward is logged under Jordan's number as msg_type 'relayed'
+//   (reply_id null: waiting). A burst is one list: 4 seconds after a forward,
+//   the newest one sends "Who wrote this?" for every waiting forward of the 3
+//   minutes before it, and those rows are stamped rly:<anchor>:listed at once,
+//   so a pick claims exactly the rows its list showed (critique X2).
+// - A pick copies the words into that person's chat as msg_type 'external'
+//   (A0: such a row never opens their 24 hours), reads them with the live
+//   parsers (relay.ts) and shows Jordan a card: what was read, in English, and
+//   what each button would record, including what the bot's normal steps may
+//   do after it (critique major 3).
+// - v1 records only (critique X3, X6): no offer, price ask, stand-down or any
+//   other message to a studio or a customer is sent from here. A customer's
+//   "yes" never confirms anything (BOTH PARTIES TAP): nothing in this block
+//   books, awards or confirms.
+// - Every list row and button id is signed (relaySig), and a request is acted
+//   on only once it is proven to come from Meta or from our webhook relay
+//   (relayVerified): the function is reachable with the public key (critique
+//   blocker 1).
+// - A discount is read only from one forwarded text message with none of our
+//   own lines in the burst (critique blocker 2); a voice note records no yes,
+//   time, price or discount at all, because it is not the studio's writing
+//   (critique major 7).
+// - test mode: only test studios (a name with test or prueba) and test
+//   customers (Jordan's numbers, the 34600000xxx canary, the test addresses)
+//   get anything recorded; a real person gets the card headed TEST MODE.
+//   Friend testers and held customers are never listed or written to.
+// - Relay state lives in wa_messages.reply_id, funnel_events and
+//   wa_inbound_seen, never in Jordan's own session (critique M9).
+const RELAY_DEBOUNCE_MS = 4000;
+const RELAY_BATCH_MS = 3 * 60e3;
+const RELAY_ANCHOR_MAX_MS = 2 * 3600e3;
+const RELAY_ASK_MS = 10 * 60e3;
+const RELAY_CAND_MS = 72 * 3600e3;
+const RELAY_ASK_TEXT = "Send me their contact card, or type their number.";
+const RELAY_MEDIA_TEXT = "I can read text and voice notes only. Forward the text instead.";
+const RELAY_UNVERIFIED_TEXT = "I got a relay message but could not check that it came from WhatsApp, so I did nothing. The relay needs META_APP_SECRET (or RELAY_HOOK_KEY on the webhook relay) set.";
+const RELAY_REQ_COLS = "id,first_name,last_name,client_phone,contact_email,day1,time1,proposed_time,message_text,created_at,stage,stage_updated_at,partner_id,confirmed_time,confirmed_start,therapist_gender,languages,service_name,customer_flag";
+const RELAY_OPEN_REQ = ["new", "needs_contact", "awaiting_go", "studio_asked", "studio_replied", "offered", "bidding", "confirmed"];
+let relayModeCache: { v: RelayMode; at: number } = { v: "off", at: 0 };
+// app_secrets RELAY, read at most once a minute. A failed read keeps the
+// value last read, so a forward is never run as one of Jordan's test
+// bookings because the table did not answer once; before any read it is off.
+async function relayMode(): Promise<RelayMode> {
+  if (relayModeCache.at && Date.now() - relayModeCache.at < 60e3) return relayModeCache.v;
+  const env = Deno.env.get("RELAY");
+  if (env) { relayModeCache = { v: parseRelayMode(env), at: Date.now() }; return relayModeCache.v; }
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/app_secrets?key=eq.RELAY&select=value&limit=1`, { headers: H() });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const rows = await r.json();
+    relayModeCache = { v: parseRelayMode(Array.isArray(rows) && rows[0] ? rows[0].value : ""), at: Date.now() };
+  } catch (e) {
+    console.log("[relay] RELAY could not be read, keeping", relayModeCache.v, String(e));
+    relayModeCache = { v: relayModeCache.v, at: Date.now() };
+  }
+  return relayModeCache.v;
+}
+const relayHex = (b: Uint8Array, n: number) => [...b.slice(0, n)].map((x) => x.toString(16).padStart(2, "0")).join("");
+async function relayHmac(key: string, data: string, n: number): Promise<string> {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return relayHex(new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(data))), n);
+}
+const relaySig = (base: string) => relayHmac(OPS_KEY + ":relay", base, 8);
+const relaySigned = async (base: string) => `${base}_${await relaySig(base)}`;
+async function relayHash(o: unknown): Promise<string> {
+  return relayHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(o)))), 4);
+}
+function relaySame(a: string, b: string): boolean {
+  if (a.length !== b.length || !a.length) return false;
+  let x = 0;
+  for (let i = 0; i < a.length; i++) x |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return x === 0;
+}
+// Critique blocker 1: is this request really from Meta (X-Hub-Signature-256,
+// an HMAC of the body under the app secret, META_APP_SECRET) or from our own
+// whatsapp-webhook relay (header x-mc-relay-key equal to RELAY_HOOK_KEY, at
+// least 24 characters)? Read once per turn. Without either secret set, no
+// relay request is ever acted on.
+async function relayVerified(): Promise<boolean> {
+  const st: any = TURN.getStore();
+  if (!st) return false;
+  if (typeof st.relayOk === "boolean") return st.relayOk;
+  let ok = false;
+  try {
+    const sig = String(st.hubSig || "");
+    const app = await appSecret("META_APP_SECRET");
+    if (app && /^sha256=[0-9a-f]{64}$/i.test(sig)) ok = relaySame(sig.slice(7).toLowerCase(), await relayHmac(app, String(st.raw || ""), 32));
+    if (!ok) {
+      const k = await appSecret("RELAY_HOOK_KEY");
+      ok = k.length >= 24 && relaySame(String(st.relayKey || ""), k);
+    }
+  } catch (e) { console.log("[relay] verification failed", String(e)); ok = false; }
+  st.relayOk = ok;
+  return ok;
+}
+async function relayGet(path: string): Promise<any[]> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: H() }).catch(() => null);
+  const rows = r && r.ok ? await r.json().catch(() => []) : [];
+  return Array.isArray(rows) ? rows : [];
+}
+async function relayPatch(path: string, body: Record<string, unknown>): Promise<any[] | null> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method: "PATCH", headers: { ...H(), Prefer: "return=representation" }, body: JSON.stringify(body) }).catch(() => null);
+  if (!r || !r.ok) return null;
+  const rows = await r.json().catch(() => []);
+  return Array.isArray(rows) ? rows : [];
+}
+const relaySay = (to: string, t: string) => sendText(to, t, { manual: true });
+// A background step after the webhook has been answered (EdgeRuntime), or
+// awaited where there is none.
+function relayBackground(fn: () => Promise<void>): Promise<void> {
+  const p = fn().catch((e) => console.log("[relay] background step failed", String(e)));
+  const er = (globalThis as any).EdgeRuntime;
+  if (er && typeof er.waitUntil === "function") { try { er.waitUntil(p); return Promise.resolve(); } catch (_e) { /* awaited below */ } }
+  return p;
+}
+const relaySleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// The parsers relay.ts reads with: the live handlers' own. A function, since
+// some of them are declared further down the file.
+const relayP = () => ({ parseOfferedTime, parseQuotedPrice, strongSpanish, parseDiscount, studioGenderReply, BARE_YES_RE, AUTOREPLY_RE, HOURS_STATEMENT_RE, plainStudioAck, studioSaysArrived, stopIntent, bajaIntent: (t: string) => letterBajaIntent(t) || BAJA_ONLY_RE.test(t), EROTIC_RE, CANCEL_RE, DECLINE_RE, CHANGE_RE, GOODBYE_RE });
+// The words of a burst: each row's text (a voice note's transcript), with the
+// rows that are our own lines (an ask or a price ask Jordan forwarded along)
+// left out.
+type RelayWords = { text: string; rows: Array<{ id: number; body: string; text: string; voicePath: string | null; ours: boolean }>; voice: boolean; voiceNoText: string | null; echo: boolean; single: boolean };
+function relayWords(rows: Array<{ id: number; body: string }>): RelayWords {
+  const parsed = rows.map((r) => {
+    const b = String(r.body || "");
+    const v = /^\[voice note(?: ([0-9]+\/[0-9]+\.[a-z0-9]+))?\]\s*([\s\S]*)$/.exec(b);
+    const t = (v ? v[2] : b).trim();
+    return { id: Number(r.id), body: b, text: t, voicePath: v ? (v[1] || null) : null, voice: !!v, ours: !!t && OUR_LINE_RE.test(t) };
+  });
+  const theirs = parsed.filter((p) => !p.ours);
+  const voice = theirs.some((p) => p.voice);
+  const untold = theirs.find((p) => p.voice && !p.text);
+  return {
+    text: theirs.map((p) => p.text).filter(Boolean).join("\n"),
+    rows: parsed.map(({ voice: _v, ...p }) => p),
+    voice, voiceNoText: untold ? (untold.voicePath || "") : null,
+    echo: parsed.some((p) => p.ours), single: theirs.length === 1 && !voice && parsed.length === 1,
+  };
+}
+async function relayEnglish(t: string): Promise<string> {
+  const out = await aiText("Translate this WhatsApp message into natural English. It was written to a massage booking service in Madrid, by a massage studio or by a customer. Keep names, numbers, times and prices exactly. Return only the translation.", String(t).slice(0, 800), 400, 10000).catch(() => null);
+  return out ? noDashes(out).trim().slice(0, 600) : "";
+}
+const relayLast4 = (p: string) => (p ? `...${digitsOf(p).slice(-4)}` : "");
+function relayReqDay(req: any): { en: string; es: string; short: string } {
+  const d = req ? studioDate(req) : null;
+  if (!d) return { en: "", es: "", short: "" };
+  return { en: LONG_EN.format(d).replace(/,/g, ""), es: LONG_ES.format(d).replace(/,/g, ""), short: SHORT_EN.format(d).replace(/[.,]/g, "") };
+}
+// Who a candidate is for the relay: "write" (recorded), "testcard" (test
+// mode, a real person: the card only) or "refuse" (never listed, never
+// written: friend testers, held customers, and test contacts in on mode).
+function relayStudioAud(name: string, req: any, mode: RelayMode): "write" | "testcard" | "refuse" {
+  const testStudio = REL_TEST_STUDIO_RE.test(String(name || ""));
+  const testReq = !!req && offerTestCustomer(req);
+  // A friend tester's or a held customer's request: never listed, in any mode.
+  const friendReq = !!req && (releasedAudience({ phone: req.client_phone, email: req.contact_email }) === "none" || heldNum(req.client_phone) || heldMail(req.contact_email));
+  if (friendReq) return "refuse";
+  if (mode === "test") return testStudio ? "write" : "testcard";
+  return testStudio || testReq ? "refuse" : "write";
+}
+function relayCustomerAud(req: any, mode: RelayMode): "write" | "testcard" | "refuse" {
+  if (heldNum(req?.client_phone) || heldMail(req?.contact_email)) return "refuse";
+  const a = releasedAudience({ phone: req?.client_phone, email: req?.contact_email, name: `${req?.first_name || ""} ${req?.last_name || ""}` });
+  if (a === "none") return "refuse";
+  if (mode === "test") return a === "test" ? "write" : "testcard";
+  return a === "test" ? "refuse" : "write";
+}
+function relayStageWords(req: any, day: { short: string }): string {
+  const st = String(req?.stage || "");
+  if (st === "confirmed") return `booked ${[day.short, req.confirmed_time].filter(Boolean).join(" ")}`.trim();
+  return ({ new: "request in", needs_contact: "needs contact", awaiting_go: "waiting for a go", studio_asked: "studios asked", studio_replied: "a studio replied", offered: "offer sent", bidding: "studios bidding" } as Record<string, string>)[st] || st;
+}
+// An offer still in front of the customer (critique M1): the row is open, the
+// customer has not answered, it reached them (a via is recorded), and its slot
+// has not started.
+function relayLiveOffer(rows: any[], nowMs: number): any | null {
+  return rows.find((x) => ["pending", "accepted"].includes(String(x.outcome || "")) && !x.customer_answer && x.customer_offered_at && x.customer_offer_via && (() => { const t = Date.parse(String(x.offer_slot_at || "")); return !Number.isFinite(t) || t > nowMs; })()) || null;
+}
+// Everyone who could have written: studios asked in the last 72 hours, and
+// customers with a request that moved in the last 72 hours or an offer open.
+async function relayCandidates(from: string, mode: RelayMode, nowMs: number): Promise<RelayCand[]> {
+  const since = new Date(nowMs - RELAY_CAND_MS).toISOString();
+  const asks = await relayGet(`request_dispatch?sent_at=gte.${since}&outcome=in.(pending,accepted,won,declined,expired)&order=sent_at.desc&limit=60&select=id,request_id,partner_id,phone,sent_at,replied_at,outcome,offered_time,chased_at`);
+  const offers = await relayGet(`request_dispatch?customer_offered_at=gte.${new Date(nowMs - 7 * 86400e3).toISOString()}&customer_answer=is.null&outcome=in.(pending,accepted)&order=customer_offered_at.desc&limit=30&select=id,request_id,partner_id,outcome,customer_answer,customer_offered_at,customer_offered_time,customer_offer_via,offer_slot_at`);
+  const reqOpen = await relayGet(`whatsapp_requests?stage=in.(${RELAY_OPEN_REQ.join(",")})&client_phone=not.is.null&or=(created_at.gte.${since},stage_updated_at.gte.${since})&order=id.desc&limit=40&select=${RELAY_REQ_COLS}`);
+  const reqs = new Map<number, any>(reqOpen.map((r) => [Number(r.id), r]));
+  const more = [...new Set([...asks, ...offers].map((x) => Number(x.request_id)).filter((id) => id && !reqs.has(id)))];
+  if (more.length) for (const r of await relayGet(`whatsapp_requests?id=in.(${more.join(",")})&select=${RELAY_REQ_COLS}`)) reqs.set(Number(r.id), r);
+  const pids = [...new Set(asks.map((x) => String(x.partner_id || "")).filter(Boolean))];
+  const partners = new Map<string, any>();
+  if (pids.length) for (const p of await relayGet(`partners?id=in.(${pids.map(encodeURIComponent).join(",")})&select=id,business_name,status,opted_out_at`)) partners.set(String(p.id), p);
+  const pick = (await relayGet(`funnel_events?phone=eq.${from}&event=eq.relay_picked&created_at=gte.${new Date(nowMs - 2 * 3600e3).toISOString()}&order=created_at.desc&limit=1&select=meta,created_at`))[0];
+  const lastKey = pick ? `${pick.meta?.kind}:${pick.meta?.target}` : "";
+  const lastAt = pick ? Date.parse(String(pick.created_at || "")) : null;
+  const out: RelayCand[] = [];
+  for (const d of asks) {
+    const req = reqs.get(Number(d.request_id));
+    const p = partners.get(String(d.partner_id || ""));
+    if (!req || !p) continue;
+    const aud = relayStudioAud(String(p.business_name || ""), req, mode);
+    if (aud === "refuse") continue;
+    const day = relayReqDay(req);
+    const sent = Date.parse(String(d.sent_at || ""));
+    out.push({ kind: "studio", key: String(d.id), requestId: Number(d.request_id), name: String(p.business_name || ""), customerName: String(req.first_name || "").trim().split(/\s+/)[0] || "", phone: digitsOf(String(d.phone || "")), test: aud === "write" && mode === "test", askTime: exactTime(req), offeredTime: String(d.offered_time || ""), outcome: String(d.outcome || ""), answered: !!d.replied_at, chasedAtMs: d.chased_at ? Date.parse(String(d.chased_at)) : null, lastPickMs: lastKey === `s:${d.id}` ? lastAt : null, atMs: Number.isFinite(sent) ? sent : 0, dayShort: day.short, sentHm: Number.isFinite(sent) ? madridTime(new Date(sent).toISOString()) : "" });
+  }
+  const custReqs = [...reqs.values()].filter((r) => r.client_phone && RELAY_OPEN_REQ.includes(String(r.stage || "")));
+  const phones = [...new Set(custReqs.map((r) => digitsOf(String(r.client_phone))).filter(Boolean))];
+  const openWin = new Set<string>();
+  if (phones.length) for (const m of await relayGet(`wa_messages?phone=in.(${phones.join(",")})&direction=eq.in&or=(msg_type.is.null,msg_type.neq.external)&created_at=gte.${new Date(nowMs - CUSTOMER_WINDOW_MS).toISOString()}&select=phone&limit=500`)) openWin.add(digitsOf(String(m.phone || "")));
+  const pnames = new Map<string, string>();
+  const offerPids = [...new Set(offers.map((x) => String(x.partner_id || "")).filter((id) => id && !partners.has(id)))];
+  if (offerPids.length) for (const p of await relayGet(`partners?id=in.(${offerPids.map(encodeURIComponent).join(",")})&select=id,business_name`)) pnames.set(String(p.id), String(p.business_name || ""));
+  for (const req of custReqs) {
+    const aud = relayCustomerAud(req, mode);
+    if (aud === "refuse") continue;
+    const day = relayReqDay(req);
+    const lo = relayLiveOffer(offers.filter((x) => Number(x.request_id) === Number(req.id)), nowMs);
+    const created = Date.parse(String(req.created_at || "")), moved = Date.parse(String(req.stage_updated_at || ""));
+    const ph = digitsOf(String(req.client_phone));
+    out.push({ kind: "customer", key: String(req.id), requestId: Number(req.id), name: String(req.first_name || "").trim() || `+${ph}`, phone: ph, test: aud === "write" && mode === "test", askTime: exactTime(req), liveOffer: lo ? { studio: String(partners.get(String(lo.partner_id))?.business_name || pnames.get(String(lo.partner_id)) || "a studio"), time: String(lo.customer_offered_time || "") } : null, windowOpen: openWin.has(ph), lastPickMs: lastKey === `c:${req.id}` ? lastAt : null, atMs: Math.max(Number.isFinite(created) ? created : 0, Number.isFinite(moved) ? moved : 0), dayShort: day.short, stageWords: relayStageWords(req, day) });
+  }
+  return out;
+}
+async function relayTurn(o: { from: string; msg: any; text: string; replyId: string; voice: { path: string | null; transcript: string } | null; relayIn: boolean; mode: RelayMode }): Promise<boolean> {
+  const from = digitsOf(o.from);
+  if (o.mode === "off" || !JORDAN_OWN.includes(from)) return false;
+  const tap = /^rly_/.test(o.replyId);
+  // An answer to "Someone else": a contact card, or a typed number, within 10
+  // minutes. Any other message clears the question and runs as before.
+  let askAnchor = 0, askNum = "";
+  if (!tap && (!o.relayIn || String(o.msg?.type) === "contacts")) {
+    askAnchor = await relayAskOpen(from);
+    askNum = askAnchor ? relayNumberFrom(o.msg, o.text) : "";
+    if (!o.relayIn) {
+      if (!askAnchor) return false;
+      if (!askNum) { if (await relayVerified()) await relayAskClear(from, askAnchor); return false; }
+    }
+    if (!askNum) askAnchor = 0;
+  }
+  quietThisTurn = true;
+  if (!(await relayVerified())) {
+    if (!(await sentRecently(from, RELAY_UNVERIFIED_TEXT, 10 * 60e3))) await relaySay(from, RELAY_UNVERIFIED_TEXT);
+    await logEvent(from, "relay_unverified", { tap, forward: o.relayIn });
+    return true;
+  }
+  if (!OPS_KEY) { console.log("[relay] no ops key, nothing done"); return true; }
+  if (askAnchor) { await relayResolveNumber(from, askAnchor, askNum, o.mode); return true; }
+  if (tap) { await relayTap(from, o.replyId, o.mode); return true; }
+  await relayForwarded(from, String(o.msg?.type || ""), o.mode);
+  return true;
+}
+function relayNumberFrom(msg: any, text: string): string {
+  if (String(msg?.type) === "contacts") {
+    const ph = (Array.isArray(msg?.contacts) ? msg.contacts : []).flatMap((c: any) => Array.isArray(c?.phones) ? c.phones : []);
+    const n = ph.map((p: any) => digitsOf(String(p?.wa_id || p?.phone || ""))).find((d: string) => d.length >= 9);
+    return n ? (n.length === 9 && /^[6789]/.test(n) ? "34" + n : n) : "";
+  }
+  const t = String(text || "").trim();
+  if (!/^\+?[\d\s().-]{9,22}$/.test(t)) return "";
+  const d = digitsOf(t);
+  if (d.length < 9 || d.length > 15) return "";
+  return d.length === 9 && /^[6789]/.test(d) ? "34" + d : d;
+}
+async function relayAskOpen(from: string): Promise<number> {
+  if (!(await sentRecently(from, RELAY_ASK_TEXT, RELAY_ASK_MS))) return 0;
+  const row = (await relayGet(`wa_messages?phone=eq.${from}&msg_type=eq.relayed&reply_id=like.rly:*:ask&order=id.desc&limit=1&select=reply_id`))[0];
+  const m = String(row?.reply_id || "").match(/^rly:(\d+):ask$/);
+  return m ? Number(m[1]) : 0;
+}
+async function relayAskClear(from: string, a: number): Promise<void> {
+  await relayPatch(`wa_messages?phone=eq.${from}&msg_type=eq.relayed&reply_id=eq.rly:${a}:ask`, { reply_id: `rly:${a}:listed` });
+}
+async function relayForwarded(from: string, type: string, mode: RelayMode): Promise<void> {
+  const mine = (await relayGet(`wa_messages?phone=eq.${from}&direction=eq.in&msg_type=eq.relayed&reply_id=is.null&order=id.desc&limit=1&select=id,body,created_at`))[0]; // A0: words (Jordan's own relayed rows)
+  if (!mine) return;
+  if (type !== "text" && type !== "audio") {
+    await relayPatch(`wa_messages?id=eq.${Number(mine.id)}&reply_id=is.null`, { reply_id: `rly:${Number(mine.id)}:ignored`, body: `[relay: ${type || "media"}, not read]` });
+    if (!(await sentRecently(from, RELAY_MEDIA_TEXT, 60e3))) await relaySay(from, RELAY_MEDIA_TEXT);
+    await logEvent(from, "relay_media", { type });
+    return;
+  }
+  // Jordan often forwards several at once, each its own webhook: only the
+  // newest of the burst sends the list, 4 seconds after it arrived.
+  await relayBackground(async () => {
+    await relaySleep(RELAY_DEBOUNCE_MS);
+    const newer = await relayGet(`wa_messages?phone=eq.${from}&msg_type=eq.relayed&id=gt.${Number(mine.id)}&select=id&limit=1`);
+    if (newer.length) return;
+    await relaySendList(from, mine, mode);
+  });
+}
+async function relaySendList(from: string, anchorRow: any, mode: RelayMode): Promise<void> {
+  const a = Number(anchorRow.id);
+  const at = Date.parse(String(anchorRow.created_at || ""));
+  const since = new Date((Number.isFinite(at) ? at : Date.now()) - RELAY_BATCH_MS).toISOString();
+  // The batch is frozen here: the rows this list shows are the rows a pick claims.
+  const claimed = await relayPatch(`wa_messages?phone=eq.${from}&msg_type=eq.relayed&reply_id=is.null&id=lte.${a}&created_at=gte.${since}`, { reply_id: `rly:${a}:listed` });
+  const rows = (claimed || []).sort((x, y) => Number(x.id) - Number(y.id));
+  if (!rows.length) return;
+  const w = relayWords(rows);
+  const nowMs = Date.now();
+  const ranked = relayRank(w.text, await relayCandidates(from, mode, nowMs), nowMs, relayP()).slice(0, RELAY_MAX_CANDS);
+  const needEn = relayNeedsEnglish(w.text, strongSpanish);
+  const en = needEn ? await relayEnglish(w.text) : "";
+  const quote = w.text || (w.voice ? "(a voice note I could not transcribe)" : w.echo ? "(only our own words)" : "");
+  const listRows: Array<{ id: string; title: string; description?: string }> = [];
+  for (const c of ranked) {
+    const t = relayRowText(c, mode);
+    listRows.push({ id: await relaySigned(relayBase(c.kind === "studio" ? "s" : "c", a, c.key)), ...t });
+  }
+  listRows.push({ id: await relaySigned(relayBase("x", a)), title: "Someone else", description: "Send me their contact or number" });
+  listRows.push({ id: await relaySigned(relayBase("m", a)), title: "Me (my own words)", description: "Nothing is saved anywhere else" });
+  listRows.push({ id: await relaySigned(relayBase("i", a)), title: "Ignore", description: "Forget it and delete the text" });
+  const extra = w.voiceNoText !== null && w.voiceNoText !== undefined ? `I could not transcribe the voice note.${w.voiceNoText ? ` Listen: ${SUPABASE_URL}/functions/v1/wa-bot?media=${encodeURIComponent(w.voiceNoText)}&sig=${await replySig(from)}` : ""}` : "";
+  const body = relayListBody({ n: rows.length, quote, en, enFailed: needEn && !en, mode, ref: a, none: !ranked.length, extra });
+  await sendList(from, body, "Who wrote this?", listRows, { manual: true });
+  await logEvent(from, "relay_listed", { anchor: a, rows: rows.length, cands: ranked.length, mode });
+}
+async function relayTap(from: string, replyId: string, mode: RelayMode): Promise<void> {
+  const id = relayParse(replyId);
+  if (!id || !relaySame(id.sig, await relaySig(id.base))) {
+    console.log("[relay] an rly_ id that is not ours, ignored");
+    await logEvent(from, "relay_bad_id", {});
+    return;
+  }
+  const anchor = (await relayGet(`wa_messages?id=eq.${id.anchor}&phone=eq.${from}&msg_type=eq.relayed&select=id,created_at`))[0];
+  if (!anchor) { await relaySay(from, "I cannot find that forward any more. Forward it again."); return; }
+  if (Date.now() - Date.parse(String(anchor.created_at || "")) > RELAY_ANCHOR_MAX_MS) { await relaySay(from, "Too old, forward it again."); return; }
+  if (id.kind === "a") { await relayAction(from, id, mode); return; }
+  await relayPick(from, id, mode);
+}
+// The rows of a burst, moved from one state to the next. Empty: already handled.
+async function relayClaim(from: string, a: number, fromState: string, toState: string): Promise<any[]> {
+  const rows = await relayPatch(`wa_messages?phone=eq.${from}&msg_type=eq.relayed&reply_id=eq.${encodeURIComponent(`rly:${a}:${fromState}`)}`, { reply_id: `rly:${a}:${toState}` });
+  return (rows || []).sort((x, y) => Number(x.id) - Number(y.id));
+}
+// Ignore, and Someone else with no match (critique M14): the text is blanked
+// and a voice note deleted. It could have been a friend's message.
+async function relayForget(from: string, a: number, state: string, rows: any[]): Promise<void> {
+  await relayPatch(`wa_messages?phone=eq.${from}&msg_type=eq.relayed&reply_id=eq.${encodeURIComponent(`rly:${a}:${state}`)}`, { body: "[relay ignored]", body_en: null });
+  await relayPatch(`wa_messages?phone=eq.${from}&direction=eq.out&msg_type=eq.list&body=like.*${encodeURIComponent(`Ref R${a} [`)}*`, { body: `[relay list R${a}, ignored]`, body_en: null });
+  for (const p of relayWords(rows).rows.map((r) => r.voicePath).filter(Boolean)) await fetch(`${SUPABASE_URL}/storage/v1/object/wa-media/${p}`, { method: "DELETE", headers: H() }).catch(() => null);
+}
+async function relayPick(from: string, id: RelayId, mode: RelayMode): Promise<void> {
+  const a = id.anchor;
+  if (id.kind === "i") {
+    const rows = await relayClaim(from, a, "listed", "ignored");
+    if (!rows.length) { await relaySay(from, "That forward is already handled."); return; }
+    await relayForget(from, a, "ignored", rows);
+    await relaySay(from, "Forgotten. The text is deleted.");
+    await logEvent(from, "relay_ignored", { anchor: a });
+    return;
+  }
+  if (id.kind === "m") {
+    const rows = await relayClaim(from, a, "listed", "me");
+    await relaySay(from, rows.length ? "OK, your own words. Nothing is saved anywhere else." : "That forward is already handled.");
+    return;
+  }
+  if (id.kind === "x") {
+    const rows = await relayClaim(from, a, "listed", "ask");
+    await relaySay(from, rows.length ? RELAY_ASK_TEXT : "That forward is already handled.");
+    return;
+  }
+  await relayPickPerson(from, id.kind === "s" ? "s" : "c", id.target, a, mode, false);
+}
+// The studio side of a card: the row, its request and the studio.
+async function relayStudioCtx(rowId: string): Promise<{ row: any; req: any; p: any; phone: string; name: string } | null> {
+  const row = (await relayGet(`request_dispatch?id=eq.${encodeURIComponent(rowId)}&select=*`))[0];
+  if (!row) return null;
+  const req = (await relayGet(`whatsapp_requests?id=eq.${Number(row.request_id)}&select=${RELAY_REQ_COLS}`))[0];
+  const p = (await relayGet(`partners?id=eq.${encodeURIComponent(String(row.partner_id || ""))}&select=id,business_name,status,opted_out_at,opening_hours`))[0];
+  if (!req || !p) return null;
+  return { row, req, p, phone: digitsOf(String(row.phone || "")), name: String(p.business_name || "the studio") };
+}
+async function relayCustomerCtx(reqId: string): Promise<{ req: any; offers: any[]; phone: string; name: string } | null> {
+  const req = (await relayGet(`whatsapp_requests?id=eq.${Number(reqId)}&select=${RELAY_REQ_COLS}`))[0];
+  if (!req || !digitsOf(String(req.client_phone || ""))) return null;
+  const offers = await relayGet(`request_dispatch?request_id=eq.${Number(reqId)}&customer_offered_at=not.is.null&order=customer_offered_at.desc&limit=5&select=id,partner_id,outcome,customer_answer,customer_offered_at,customer_offered_time,customer_offer_via,offer_slot_at`);
+  return { req, offers, phone: digitsOf(String(req.client_phone)), name: String(req.first_name || "").trim() || `+${digitsOf(String(req.client_phone))}` };
+}
+function relayStudioFacts(ctx: { row: any; req: any; p: any }, w: RelayWords) {
+  const { row, req, p } = ctx;
+  const startMs = Date.parse(String(req.confirmed_start || ""));
+  const tg = String(req.therapist_gender || "");
+  const oh = p.opening_hours;
+  return {
+    askTime: exactTime(req), wantGender: (tg === "male" || tg === "female" ? tg : "") as "" | "male" | "female",
+    confirmedHere: req.stage === "confirmed" && (String(req.partner_id || "") === String(row.partner_id || "") || row.outcome === "won"),
+    confirmedTime: String(req.confirmed_time || ""), started: Number.isFinite(startMs) && startMs <= Date.now(),
+    outcome: String(row.outcome || ""), source: (w.voice ? "voice" : "text") as "text" | "voice", single: w.single, echo: w.echo,
+    hoursOnFile: typeof oh === "string" ? oh.trim() : oh ? JSON.stringify(oh) : "", open: OPEN_STAGES.includes(String(req.stage || "")),
+    acceptedAt: row.accepted_at || null,
+  };
+}
+// Everything a card shows and a tap does, worked out the same way both times,
+// so a tap acts only on what Jordan saw (the hash in the button).
+async function relayStudioView(ctx: { row: any; req: any; p: any; phone: string; name: string }, w: RelayWords) {
+  const f = relayStudioFacts(ctx, w);
+  const plan = studioRelayPlan(w.text, f, relayP());
+  const day = relayReqDay(ctx.req);
+  const nowIso = new Date().toISOString();
+  const stamped = relayStoredText(w.text, day.es);
+  let acts = studioActions(plan, f);
+  // Hours are saved only in a form dispatch-studios reads day by day.
+  acts = acts.filter((x) => !(x === "hours" || x === "hoursx") || socHoursWritable(plan.hours));
+  // A studio that is an active partner: a BAJA there means letters only
+  // (handleLetterReply), so it is shown, not recorded here.
+  if (String(ctx.p.status || "") === "active" || ctx.p.opted_out_at) acts = acts.filter((x) => x !== "stop");
+  const writes: Record<string, any> = {};
+  for (const x of acts) writes[x] = studioWrites(x, plan, f, "@now", stamped, w.text);
+  const hashes: Record<string, string> = {};
+  for (const x of acts) hashes[x] = await relayHash({ a: x, row: String(ctx.row.id), w: writes[x], outcome: f.outcome, replied: ctx.row.replied_at || null, via: ctx.row.customer_offer_via || null, hours: f.hoursOnFile, opt: ctx.p.opted_out_at || null, status: ctx.p.status || null, text: w.text });
+  return { f, plan, day, nowIso, stamped, acts, writes, hashes };
+}
+function relayFill(o: Record<string, unknown> | undefined, nowIso: string): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(o || {})) out[k] = v === "@now" ? nowIso : v;
+  return out;
+}
+async function relayStudioCard(from: string, ctx: { row: any; req: any; p: any; phone: string; name: string }, w: RelayWords, a: number, aud: "write" | "testcard", lead = "", verified = false): Promise<void> {
+  const v = await relayStudioView(ctx, w);
+  const { f, plan, day } = v;
+  const req = ctx.req;
+  const needEn = relayNeedsEnglish(w.text, strongSpanish);
+  const en = needEn ? await relayEnglish(w.text) : "";
+  const who = String(req.first_name || "").trim().split(/\s+/)[0] || "the customer";
+  const lines: string[] = [];
+  if (aud === "testcard") lines.push("TEST MODE: nothing recorded or sent. This is what would happen:");
+  if (lead) lines.push(lead);
+  lines.push(`${aud === "testcard" ? "Would be saved" : "Saved"} in ${ctx.name}'s chat (${relayLast4(ctx.phone)}${verified ? ", number checked from your contact card" : ""}): "${w.text || "(no text)"}"`);
+  if (needEn) lines.push(en ? `(EN: "${en}")` : "(English not available: the translation failed.)");
+  lines.push(`Request #${req.id}: ${who}, ${day.en || "day not known"}, ${f.askTime ? `asked for ${f.askTime}` : "no exact hour asked"}.`);
+  lines.push(`I read: ${relayReadText(plan.kinds, plan, euro)}.`);
+  const rel = relayRelativeWords(w.text);
+  if (rel.length && day.en) lines.push(`They wrote "${rel[0]}". A forward carries no time, so I read it as the request's own day, ${day.en}, and store it that way. If they meant another day, do not record it.`);
+  if (f.source === "voice") lines.push(`A voice note is not their writing, so I will not record a yes, a time, a price or a discount from it. Ask them to write it to the bot: ${await replyUrl(ctx.phone)}`);
+  if (w.echo) lines.push("I left out the messages that were our own words.");
+  if (plan.kinds.includes("hours") && plan.hours && !socHoursWritable(plan.hours)) lines.push(`Their hours read as "${plan.hours}", which the asks cannot use as they are, so nothing is saved.`);
+  if (plan.kinds.includes("hours") && f.hoursOnFile && plan.hours && f.hoursOnFile !== plan.hours) lines.push(`Hours on file: "${f.hoursOnFile}". Theirs now: "${plan.hours}".`);
+  if (plan.kinds.includes("stop") && !v.acts.includes("stop")) lines.push(ctx.p.opted_out_at ? "They are already opted out." : `${ctx.name} is an active partner, so a BAJA means letters only. Record it in the letters tool, Opt-outs, if that is what they meant.`);
+  if (f.confirmedHere) lines.push(plan.kinds.includes("arrived") ? "The booking has started. Nothing is recorded from here: the arrival makes the visit billable, so it comes from the studio's own tap or words to the bot." : plan.kinds.includes("time_change") ? "This is a new time on a booking already confirmed with them. Nothing moves without the customer's own tap. Reply to them as the bot to settle it." : "They hold the confirmed booking. Nothing is changed from here.");
+  else if (!f.open) lines.push(`The request is ${req.stage || "closed"}, so nothing is recorded on it.`);
+  if (plan.kinds.includes("yes_ask") && !plan.time) lines.push("The request has no exact hour, so a yes cannot be recorded as an offer. Ask them which hours they have.");
+  const next: string[] = [];
+  for (const x of v.acts) {
+    if (x === "undo") continue;
+    next.push(`${RELAY_LABELS[x]} ${aud === "testcard" ? "would record" : "records"} ${relayActionWords(x, plan, euro, f.source === "voice")}. ${(STUDIO_FOLLOWS[x] || []).join(" ")}`.trim());
+  }
+  lines.push(next.length ? `Next:\n${next.join("\n")}` : "Next: nothing to record. Reply to them as the bot if it needs an answer.");
+  lines.push(`Nothing is sent to the studio or the customer from here. Reply to ${ctx.name} as the bot: ${await replyUrl(ctx.phone)}`);
+  const text = noDashes(lines.join("\n\n"));
+  if (aud === "testcard") { await relaySay(from, text); return; }
+  const btns: Array<{ id: string; title: string }> = [];
+  for (const x of v.acts) btns.push({ id: await relaySigned(relayBase("a", a, String(ctx.row.id), x, v.hashes[x] || "00000000", "s")), title: RELAY_LABELS[x] });
+  if (text.length <= 1000) await sendButtons(from, text, btns, { manual: true });
+  else { await relaySay(from, text); await sendButtons(from, "What should I record?", btns, { manual: true }); }
+}
+async function relayCustomerView(ctx: { req: any; offers: any[]; phone: string }, w: RelayWords) {
+  const lo = relayLiveOffer(ctx.offers, Date.now());
+  const f = { liveOffer: !!lo, confirmed: String(ctx.req.stage) === "confirmed", open: OPEN_STAGES.includes(String(ctx.req.stage || "")), flagged: String(ctx.req.customer_flag || "") };
+  const plan = customerRelayPlan(w.text, f, relayP());
+  let acts = customerActions(plan, f);
+  // Never on Jordan's own numbers: a mute or an opt-out there stops his own tests.
+  if (JORDAN_OWN.includes(ctx.phone)) acts = acts.filter((x) => x !== "mute" && x !== "optout");
+  const hashes: Record<string, string> = {};
+  for (const x of acts) hashes[x] = await relayHash({ a: x, req: String(ctx.req.id), stage: ctx.req.stage || null, flag: f.flagged, text: w.text });
+  return { lo, f, plan, acts, hashes };
+}
+async function relayCustomerCard(from: string, ctx: { req: any; offers: any[]; phone: string; name: string }, w: RelayWords, a: number, aud: "write" | "testcard", verified = false, lead = ""): Promise<void> {
+  const v = await relayCustomerView(ctx, w);
+  const req = ctx.req;
+  const day = relayReqDay(req);
+  const open = await waWindowOpen(ctx.phone);
+  const needEn = relayNeedsEnglish(w.text, strongSpanish);
+  const en = needEn ? await relayEnglish(w.text) : "";
+  const studio = v.lo ? (await partnerCard(String(v.lo.partner_id || ""))).business_name || "a studio" : "";
+  const lines: string[] = [];
+  if (aud === "testcard") lines.push("TEST MODE: nothing recorded or sent. This is what would happen:");
+  if (lead) lines.push(lead);
+  lines.push(`${aud === "testcard" ? "Would be saved" : "Saved"} in ${ctx.name}'s chat (${relayLast4(ctx.phone)}${verified ? ", number checked from your contact card" : ""}): "${w.text || "(no text)"}"`);
+  if (needEn) lines.push(en ? `(EN: "${en}")` : "(English not available: the translation failed.)");
+  lines.push(`Request #${req.id}: ${relayStageWords(req, day)}${day.en ? ", " + day.en : ""}.${v.lo ? ` Offer waiting: ${studio} ${v.lo.customer_offered_time || ""}, sent by ${v.lo.customer_offer_via === "whatsapp" ? "WhatsApp" : "email"}.` : ""}`);
+  lines.push(`Their WhatsApp window with the bot is ${open ? "open" : "closed (only a template or an email reaches them)"}.`);
+  lines.push(`I read: ${relayReadText(v.plan.kinds, v.plan, euro)}.`);
+  const k = (x: string) => v.plan.kinds.includes(x);
+  if (k("yes")) lines.push(`Nothing is booked. Only their own tap on Yes books it. ${open ? "Their window is open: reply to them as the bot and say to tap Yes on the offer." : `Their window is closed: the offer they got ${v.lo?.customer_offer_via === "whatsapp" ? "on WhatsApp" : "by email"} has the Yes they can tap.`}`);
+  if (k("attend_yes")) lines.push("Nothing is written and the studio is not told: only their own tap or words to the bot confirm they are coming.");
+  if (k("no")) lines.push("Nothing is recorded: a no to an offer comes from their own tap. Reply as the bot to show them the next option.");
+  if (k("cancel") || k("change")) lines.push(`${v.acts.includes("freeze") ? (aud === "testcard" ? "It would be frozen" : "Freeze it marks the request") + " (customer_flag change_requested): nothing new is promised to the studio and standing approvals A and C leave it alone. " : v.f.flagged === "change_requested" ? "It is frozen (customer_flag change_requested): nothing new is promised to the studio and standing approvals A and C leave it alone. " : ""}Nothing is sent to anyone. To cancel it for real, ask them to tap cancel on the bot number, or reply to them as the bot.`);
+  if (k("stop")) lines.push(v.acts.includes("optout") ? "Record opt-out takes them off offers. Nothing is sent to them." : "That is your own number, so nothing is recorded.");
+  if (k("offmenu")) lines.push(v.acts.includes("mute") ? "Mute them: the bot never answers this number again. The standard shutdown line is not sent from here." : "That is your own number, so it is not muted.");
+  lines.push(`Nothing is sent to them from here. Reply to ${ctx.name} as the bot: ${await replyUrl(ctx.phone)}`);
+  const text = noDashes(lines.join("\n\n"));
+  if (aud === "testcard") { await relaySay(from, text); return; }
+  const btns: Array<{ id: string; title: string }> = [];
+  for (const x of v.acts) btns.push({ id: await relaySigned(relayBase("a", a, String(req.id), x, v.hashes[x] || "00000000", "c")), title: RELAY_LABELS[x] });
+  if (text.length <= 1000) await sendButtons(from, text, btns, { manual: true });
+  else { await relaySay(from, text); await sendButtons(from, "What should I record?", btns, { manual: true }); }
+}
+// The words, copied into that person's own chat (msg_type 'external',
+// reply_id rly:<anchor>), in order and unchanged. A voice note's file is
+// copied into their folder, so the reply page can play it there. Our own
+// lines are not copied: they are not theirs.
+async function relayCopyExternal(rows: any[], target: string, a: number): Promise<void> {
+  if (digitsOf(target).length < 9) return; // a studio we only reach by email has no chat to save it in
+  const w = relayWords(rows);
+  for (const r of w.rows) {
+    if (r.ours) continue;
+    let body = r.body;
+    if (r.voicePath) {
+      const ext = (r.voicePath.split(".").pop() || "ogg").toLowerCase();
+      const dest = `${target}/${Date.now()}${Math.floor(Math.random() * 1000)}.${ext}`;
+      const cp = await fetch(`${SUPABASE_URL}/storage/v1/object/copy`, { method: "POST", headers: H(), body: JSON.stringify({ bucketId: "wa-media", sourceKey: r.voicePath, destinationKey: dest }) }).catch(() => null);
+      body = `[voice note${cp && cp.ok ? " " + dest : ""}]${r.text ? " " + r.text : ""}`;
+    }
+    await logMsg(target, "in", body, "external", `rly:${a}`);
+  }
+}
+async function relayPickPerson(from: string, kind: "s" | "c", target: string, a: number, mode: RelayMode, verified: boolean): Promise<void> {
+  const sctx = kind === "s" ? await relayStudioCtx(target) : null;
+  const cctx = kind === "c" ? await relayCustomerCtx(target) : null;
+  if (!sctx && !cctx) { await relaySay(from, "I cannot find that request any more. Nothing was saved."); return; }
+  const aud = sctx ? relayStudioAud(sctx.name, sctx.req, mode) : relayCustomerAud(cctx!.req, mode);
+  if (aud === "refuse") { await relaySay(from, "That one is a test or friend contact, so nothing is saved for it."); return; }
+  const rows = await relayClaim(from, a, "listed", aud === "write" ? `${kind}:${target}` : "testmode");
+  if (!rows.length) { await relaySay(from, "That forward is already handled."); return; }
+  const w = relayWords(rows);
+  if (aud === "write") await relayCopyExternal(rows, sctx ? sctx.phone : cctx!.phone, a);
+  // A customer who asked to change or cancel: the request is frozen at once
+  // (customer_flag change_requested, the live change path's own mark), so the
+  // studio chases leave it alone (critique, major 8). It sends nothing, and
+  // "Not theirs" puts it back.
+  let lead = "";
+  if (cctx && aud === "write") {
+    const v0 = await relayCustomerView(cctx, w);
+    if (v0.acts.includes("freeze")) {
+      const u = await relayPatch(`whatsapp_requests?id=eq.${Number(cctx.req.id)}&stage=in.(${RELAY_OPEN_REQ.join(",")})`, customerWrites("freeze")!.request!);
+      if (u && u.length) {
+        cctx.req.customer_flag = "change_requested";
+        await fetch(`${SUPABASE_URL}/rest/v1/wa_inbound_seen`, { method: "POST", headers: { ...H(), Prefer: "resolution=ignore-duplicates,return=minimal" }, body: JSON.stringify({ wamid: `rly:${a}:freeze:auto`, phone: from }) }).catch(() => null);
+        lead = "I froze the request at once, because they asked to change or cancel it.";
+      }
+    }
+  }
+  if (sctx) await relayStudioCard(from, sctx, w, a, aud, "", verified);
+  else await relayCustomerCard(from, cctx!, w, a, aud, verified, lead);
+  await logEvent(from, "relay_picked", { anchor: a, kind, target, test: mode === "test", aud, rows: rows.length });
+}
+async function relayResolveNumber(from: string, a: number, num: string, mode: RelayMode): Promise<void> {
+  const d = digitsOf(num);
+  const back = async () => { await relayPatch(`wa_messages?phone=eq.${from}&msg_type=eq.relayed&reply_id=eq.rly:${a}:ask`, { reply_id: `rly:${a}:listed` }); };
+  const forget = async (why: string) => {
+    const rows = await relayClaim(from, a, "ask", "ignored");
+    if (rows.length) await relayForget(from, a, "ignored", rows);
+    await relaySay(from, why);
+  };
+  // Friend testers and the like are never saved (critique major 4).
+  if (releasedAudience({ phone: d }) === "none" || heldNum(d)) { await forget("That is a test or friend number, so nothing was saved and the text is deleted."); return; }
+  const partner = await findPartnerByNumber(d).catch(() => null);
+  if (partner) {
+    const row = (await relayGet(`request_dispatch?partner_id=eq.${encodeURIComponent(partner.id)}&sent_at=gte.${new Date(Date.now() - RELAY_CAND_MS).toISOString()}&order=sent_at.desc&limit=1&select=id`))[0];
+    if (row) { await back(); await relayPickPerson(from, "s", String(row.id), a, mode, true); return; }
+    const aud = relayStudioAud(partner.business_name, null, mode);
+    if (aud !== "write") { await relaySay(from, `${partner.business_name} has no ask from us in the last 3 days${aud === "testcard" ? ", and in TEST MODE nothing is saved for a real studio" : ""}. Nothing was saved.`); await back(); return; }
+    const rows = await relayClaim(from, a, "ask", `x:${d}`);
+    if (rows.length) await relayCopyExternal(rows, d, a);
+    await relaySay(from, `${partner.business_name} has no ask from us in the last 3 days, so nothing is recorded. Their words are saved in their chat. Reply to them as the bot: ${await replyUrl(d)}`);
+    return;
+  }
+  const req = (await relayGet(`whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + d)}&stage=in.(${RELAY_OPEN_REQ.join(",")})&order=id.desc&limit=1&select=id`))[0];
+  if (req) { await back(); await relayPickPerson(from, "c", String(req.id), a, mode, true); return; }
+  await forget(`No studio or open request matches +${d}, so nothing was saved and the text is deleted.`);
+}
+// An action from a card. It acts only on what the card showed: the hash in
+// the button must match the plan worked out again now, or the new card is
+// shown instead. A double tap does nothing (wa_inbound_seen), and a failed
+// write gives the claim back so the tap can be tried again.
+async function relayAction(from: string, id: RelayId, mode: RelayMode): Promise<void> {
+  const a = id.anchor;
+  const state = `${id.tkind}:${id.target}`;
+  const rows = (await relayGet(`wa_messages?phone=eq.${from}&msg_type=eq.relayed&reply_id=eq.${encodeURIComponent(`rly:${a}:${state}`)}&order=id.asc&select=id,body`));
+  if (!rows.length) { await relaySay(from, "That forward was taken back or is already handled."); return; }
+  const w = relayWords(rows);
+  if (id.action === "undo") { await relayUndo(from, a, id, rows); return; }
+  // The same button again, after it worked: nothing more (the state it
+  // changed would otherwise read as "something changed").
+  const key = `rly:${a}:${id.action}:${id.hash}`;
+  if ((await relayGet(`wa_inbound_seen?wamid=eq.${encodeURIComponent(key)}&select=wamid&limit=1`)).length) { await relaySay(from, "Already done."); return; }
+  const sctx = id.tkind === "s" ? await relayStudioCtx(id.target) : null;
+  const cctx = id.tkind === "c" ? await relayCustomerCtx(id.target) : null;
+  if (!sctx && !cctx) { await relaySay(from, "I cannot find that request any more. Nothing was recorded."); return; }
+  if ((sctx ? relayStudioAud(sctx.name, sctx.req, mode) : relayCustomerAud(cctx!.req, mode)) !== "write") { await relaySay(from, "TEST MODE: nothing recorded."); return; }
+  const view = sctx ? await relayStudioView(sctx, w) : await relayCustomerView(cctx!, w);
+  if (!view.acts.includes(id.action) || view.hashes[id.action] !== id.hash) {
+    const lead = "Something changed since that card, so I did nothing. Here is how it stands now:";
+    if (sctx) await relayStudioCard(from, sctx, w, a, "write", lead);
+    else { await relaySay(from, lead); await relayCustomerCard(from, cctx!, w, a, "write"); }
+    return;
+  }
+  const claim = await fetch(`${SUPABASE_URL}/rest/v1/wa_inbound_seen`, { method: "POST", headers: { ...H(), Prefer: "resolution=ignore-duplicates,return=representation" }, body: JSON.stringify({ wamid: key, phone: from }) }).catch(() => null);
+  const got = claim && claim.ok ? await claim.json().catch(() => null) : null;
+  if (!Array.isArray(got)) { await relaySay(from, "I could not check for a double tap, so I did nothing. Tap it again in a moment."); return; }
+  if (!got.length) { await relaySay(from, "Already done."); return; }
+  const release = () => fetch(`${SUPABASE_URL}/rest/v1/wa_inbound_seen?wamid=eq.${encodeURIComponent(key)}`, { method: "DELETE", headers: H() }).catch(() => null);
+  let done = "";
+  try {
+    done = sctx ? await relayApplyStudio(sctx, view as any, id.action) : await relayApplyCustomer(cctx!, view as any, id.action, w);
+  } catch (e) { console.log("[relay] action failed", String(e)); done = ""; }
+  if (!done) { await release(); await relaySay(from, "That did not save, so nothing changed. Tap it again."); return; }
+  await relaySay(from, noDashes(done));
+  await logEvent(from, "relay_recorded", { anchor: a, action: id.action, kind: id.tkind, target: id.target, mode });
+}
+async function relayApplyStudio(ctx: { row: any; req: any; p: any; phone: string; name: string }, v: Awaited<ReturnType<typeof relayStudioView>>, action: string): Promise<string> {
+  const nowIso = new Date().toISOString();
+  const wr = v.writes[action];
+  const what = `${ctx.name} on #${ctx.req.id}`;
+  if (action === "stop") {
+    const u = await relayPatch(`partners?id=eq.${encodeURIComponent(ctx.p.id)}&opted_out_at=is.null`, { opted_out_at: nowIso });
+    if (u === null) return "";
+    const ins = await fetch(`${SUPABASE_URL}/rest/v1/letter_optouts`, { method: "POST", headers: { ...H(), Prefer: "return=minimal" }, body: JSON.stringify({ channel: "manual", from_ref: `+${ctx.phone}`, message: `Relayed by Jordan from his phone, original time unknown: ${String(v.stamped).slice(0, 900)}`, partner_id: ctx.p.id, matched_by: "wa-bot relay (Jordan picked the studio)", matched_at: nowIso, scope: "all", opted_out_set_at: u.length ? nowIso : null, test: false }) }).catch(() => null);
+    return `Opted out: ${ctx.name} gets no more letters, outreach or asks from us.${ins && ins.ok ? "" : " The letters tool could not record it (its tables did not answer); add it in Opt-outs there if you use it."} Nothing was sent to them.`;
+  }
+  if (wr?.partner) {
+    const u = await relayPatch(`partners?id=eq.${encodeURIComponent(ctx.p.id)}${action === "hours" ? "&opening_hours=is.null" : ""}`, relayFill(wr.partner, nowIso));
+    if (u === null) return "";
+    if (!u.length) return `The hours on file for ${ctx.name} changed in the meantime, so nothing was saved. Forward it again to compare.`;
+    return `Saved ${ctx.name}'s opening hours: ${v.plan.hours}. ${(STUDIO_FOLLOWS[action] || []).join(" ")} Nothing was sent to them.`;
+  }
+  if (!wr?.dispatch) return "";
+  const body = relayFill(wr.dispatch, nowIso);
+  const u = await relayPatch(`request_dispatch?id=eq.${encodeURIComponent(String(ctx.row.id))}`, body);
+  if (!u || !u.length) return "";
+  // A yes on a row that had lapsed or was declined is a new offer, not the
+  // old one again (forwardOffer's "already"), as the live tap path does.
+  if ((action === "yes" || action === "rate") && OFFER_ROW_CLOSED.includes(String(ctx.row.outcome || ""))) await reopenOfferClaim(String(ctx.row.id));
+  return `Recorded for ${what}: ${relayActionWords(action, v.plan, euro, v.f.source === "voice")}. Nothing was sent to the studio or the customer. ${(STUDIO_FOLLOWS[action] || []).join(" ")}`.trim();
+}
+async function relayApplyCustomer(ctx: { req: any; offers: any[]; phone: string; name: string }, v: Awaited<ReturnType<typeof relayCustomerView>>, action: string, w: RelayWords): Promise<string> {
+  if (action === "optout") {
+    const lastReq = await lastRequestFor(ctx.phone).catch(() => null);
+    const lang = strongSpanish(w.text) ? "es" : "en";
+    const rec = await mktRecordWithdraw(null, ctx.phone, `[relayed by Jordan from his phone, original time unknown] ${w.text}`, lang, lastReq);
+    if (rec.why) { await mktNotSavedCard(ctx.phone, "STOP", rec.why, w.text); return ""; }
+    return `Opt-out recorded for ${ctx.name}: they get no offers from us. Nothing was sent to them.`;
+  }
+  if (action === "freeze") {
+    const u = await relayPatch(`whatsapp_requests?id=eq.${Number(ctx.req.id)}&stage=in.(${RELAY_OPEN_REQ.join(",")})`, customerWrites("freeze")!.request!);
+    if (!u || !u.length) return "";
+    return `Frozen: #${ctx.req.id} is marked change requested. Nothing new is promised to the studio, and nothing was sent to anyone. Reply to ${ctx.name} as the bot to settle it: ${await replyUrl(ctx.phone)}`;
+  }
+  if (action === "mute") {
+    const s = await getSession(ctx.phone);
+    s.step = "muted";
+    await saveSession(s);
+    return `Muted: the bot never answers ${ctx.name} again. Nothing was sent to them.`;
+  }
+  return "";
+}
+// "Not theirs": the copies leave that person's chat and the list works
+// again, as long as nothing was recorded from it.
+async function relayUndo(from: string, a: number, id: RelayId, rows: any[]): Promise<void> {
+  const done = await relayGet(`wa_inbound_seen?wamid=like.${encodeURIComponent(`rly:${a}:`)}*&select=wamid&limit=5`);
+  if (done.some((x) => !/^rly:\d+:(undo|freeze):/.test(String(x.wamid || "")))) { await relaySay(from, "Something was already recorded from it, so I cannot take it back here."); return; }
+  // The freeze made at the pick goes back too.
+  if (id.tkind === "c" && done.some((x) => /^rly:\d+:freeze:/.test(String(x.wamid || "")))) {
+    await relayPatch(`whatsapp_requests?id=eq.${Number(id.target)}&customer_flag=eq.change_requested`, { customer_flag: null });
+    await fetch(`${SUPABASE_URL}/rest/v1/wa_inbound_seen?wamid=like.${encodeURIComponent(`rly:${a}:freeze:`)}*`, { method: "DELETE", headers: H() }).catch(() => null);
+  }
+  const target = id.tkind === "s" ? (await relayStudioCtx(id.target))?.phone : (await relayCustomerCtx(id.target))?.phone;
+  if (target) {
+    const del = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${target}&msg_type=eq.external&reply_id=eq.${encodeURIComponent(`rly:${a}`)}`, { method: "DELETE", headers: { ...H(), Prefer: "return=representation" } }).catch(() => null);
+    const gone = del && del.ok ? await del.json().catch(() => []) : [];
+    for (const p of relayWords(Array.isArray(gone) ? gone : []).rows.map((r) => r.voicePath).filter(Boolean)) await fetch(`${SUPABASE_URL}/storage/v1/object/wa-media/${p}`, { method: "DELETE", headers: H() }).catch(() => null);
+  }
+  const back = await relayClaim(from, a, `${id.tkind}:${id.target}`, "listed");
+  await relaySay(from, back.length ? "OK, taken back: it is out of their chat. Pick again from the list above." : "That forward is already handled.");
+  await logEvent(from, "relay_undone", { anchor: a, kind: id.tkind, target: id.target, rows: rows.length });
+}
+// ---- relay (end) ----
 // v54: what a studio hears when it answers a request that is no longer open.
 // v212 (16 Oct): one coveredLine for the whole bot. "Ha cancelado" only when
 // the customer really did (customer_flag cancelled); a request Jordan closed,
@@ -12609,7 +13390,7 @@ const handleInner = async (req: Request) => {
       };
       const out: Record<string, unknown>[] = [];
       for (let off = 0; off < 60000; off += 1000) {
-        const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?select=phone,direction,body,msg_type,created_at&direction=eq.in&created_at=gte.${lo}&created_at=lte.${hi}&order=created_at.asc&offset=${off}&limit=1000`, { headers: H() });
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?select=phone,direction,body,msg_type,created_at&direction=eq.in&created_at=gte.${lo}&created_at=lte.${hi}&order=created_at.asc&offset=${off}&limit=1000`, { headers: H() }); // A0: words (the corpus of what people said)
         if (!r.ok) break;
         const rows = await r.json().catch(() => []);
         if (!Array.isArray(rows) || !rows.length) break;
@@ -12662,7 +13443,7 @@ const handleInner = async (req: Request) => {
         }
         return out;
       };
-      const msgs = await pull(`wa_messages?select=phone,direction,body,created_at&created_at=gte.${lo}&created_at=lte.${hi}&direction=eq.in`);
+      const msgs = await pull(`wa_messages?select=phone,direction,body,created_at&created_at=gte.${lo}&created_at=lte.${hi}&direction=eq.in&or=(msg_type.is.null,msg_type.neq.external)`);
       const evs = await pull(`funnel_events?select=phone,event,created_at&created_at=gte.${lo}&created_at=lte.${hi}`);
       const people = new Set<string>(), adPeople = new Set<string>();
       for (const m of msgs) {
@@ -12793,9 +13574,13 @@ const handleInner = async (req: Request) => {
         const settled = !!r.reconfirmed_at || !!r.client_confirmed_at || (startedMs > 0 && startedMs < now - 2 * 3600e3);
         const ageDays = (now - Date.parse(r.created_at)) / 86400e3;
 
-        const lr = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${ph}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`, { headers: H() });
-        const lastIn = (await lr.json().catch(() => []))[0]?.created_at;
-        const quietMs = lastIn ? now - Date.parse(lastIn) : Infinity;
+        // Relay A0: the window is their last message to the bot; "answered"
+        // (STRANDED YES below) counts words they sent to Jordan's phone too.
+        const lr = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${ph}&direction=eq.in&or=(msg_type.is.null,msg_type.neq.external)&order=created_at.desc&limit=1&select=created_at`, { headers: H() });
+        const lastWin = (await lr.json().catch(() => []))[0]?.created_at;
+        const quietMs = lastWin ? now - Date.parse(lastWin) : Infinity;
+        const la = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${ph}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`, { headers: H() }); // A0: words (an answer, relayed or not)
+        const lastIn = (await la.json().catch(() => []))[0]?.created_at;
 
         const dr = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?request_id=eq.${r.id}&or=(offered_time.not.is.null,outcome.in.(accepted,won))&order=replied_at.desc&limit=1&select=partner_id,offered_time,outcome,replied_at`, { headers: H() });
         const off = (await dr.json().catch(() => []))[0];
@@ -12820,7 +13605,9 @@ const handleInner = async (req: Request) => {
 
       // Left hanging: the last thing in the thread is theirs. Studios excluded,
       // they are answered by a different path and their silence is normal.
-      const mr = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?created_at=gte.${new Date(now - 36 * 3600e3).toISOString()}&order=created_at.asc&select=phone,direction,body,created_at`, { headers: H() });
+      // Relay A0: words relayed from Jordan's phone (external) are words he
+      // already has; they are never the customer waiting on the bot.
+      const mr = await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?created_at=gte.${new Date(now - 36 * 3600e3).toISOString()}&order=created_at.asc&select=phone,direction,body,created_at,msg_type`, { headers: H() });
       const msgs = await mr.json().catch(() => []);
       const pr = await fetch(`${SUPABASE_URL}/rest/v1/partners?select=phone,whatsapp&limit=400`, { headers: H() });
       const prows = await pr.json().catch(() => []);
@@ -12828,7 +13615,7 @@ const handleInner = async (req: Request) => {
       const last: Record<string, any> = {};
       for (const m of (Array.isArray(msgs) ? msgs : [])) last[String(m.phone)] = m;
       for (const [ph, m] of Object.entries(last)) {
-        if (m.direction !== "in") continue;
+        if (m.direction !== "in" || m.msg_type === "external") continue;
         if (TEST_PHONES.includes(ph) || studioNums.has(ph)) continue;
         const mins = (now - Date.parse(m.created_at)) / 60000;
         if (mins < 10 || mins > 36 * 60) continue;
@@ -13078,7 +13865,21 @@ const handleInner = async (req: Request) => {
       if (Array.isArray(prows) && prows[0]?.created_at) priorLastAt = Date.parse(prows[0].created_at);
     } catch (_e) { /* alert heuristics only */ }
 
-    await logMsg(from, "in", (voice ? `[voice note${voice.path ? " " + voice.path : ""}]${voice.transcript ? " " + voice.transcript : ""}` : "") || (text || btnText || (msg.type === "reaction" ? `[reaction ${reactionEmoji}]`.trim() : "") || (loc ? `[location ${loc.latitude},${loc.longitude}]` : `[tap: ${replyId}]`)) + (ref ? ` [via ad]` : ""), msg.type, replyId);
+    // Relay (24 Nov 2026): a message Jordan forwards from his own phone
+    // (context.forwarded, or frequently_forwarded) is someone else's words. It
+    // is logged under his number as 'relayed' and handled by relayTurn below.
+    // The switch (app_secrets RELAY) is read only for his two numbers; off
+    // changes nothing at all. context.id alone (a quoted reply) is never one.
+    const relayFwd = detectRelay(msg, from);
+    const rMode: RelayMode = relayFwd.jordan ? await relayMode() : "off";
+    const relayIn = rMode !== "off" && relayFwd.forwarded;
+    // UNSURE until the first test: whether a forwarded voice note carries the
+    // flag, and whether the whatsapp-webhook relay passes context through.
+    if (rMode !== "off") console.log(`[relay] ${msg.type} from ${digitsOf(from)}, context:`, JSON.stringify(msg.context || null).slice(0, 300));
+    else if (relayFwd.forwarded) console.log(`[wa] forwarded ${msg.type} from ${digitsOf(from)} (not Jordan's number: the normal flow reads it)`);
+    const typeLogged = relayIn ? "relayed" : msg.type;
+    const bodyLogged = msg.type === "contacts" && relayIn ? "[contacts]" : msg.type === "image" || msg.type === "document" || msg.type === "sticker" || msg.type === "video" ? (relayIn ? `[${msg.type}]` : "") : "";
+    await logMsg(from, "in", bodyLogged || ((voice ? `[voice note${voice.path ? " " + voice.path : ""}]${voice.transcript ? " " + voice.transcript : ""}` : "") || (text || btnText || (msg.type === "reaction" ? `[reaction ${reactionEmoji}]`.trim() : "") || (loc ? `[location ${loc.latitude},${loc.longitude}]` : `[tap: ${replyId}]`)) + (ref ? ` [via ad]` : "")), typeLogged, replyId);
 
     // A reaction (someone tapping a thumbs up on our message) is not an answer.
     if (msg.type === "reaction") return new Response("OK", { status: 200 });
@@ -13092,6 +13893,26 @@ const handleInner = async (req: Request) => {
     if ((msg.type === "interactive" || msg.type === "button") && !replyId && !text && !btnText && !loc) {
       console.log(`[wa] empty interactive from ${from}, logged and ignored`);
       return new Response("OK", { status: 200 });
+    }
+
+    // Relay (24 Nov 2026): Jordan's forwards, his taps on the relay's list and
+    // cards, and his answer to "Someone else". Before everything that follows:
+    // a forwarded /socios message would mark his own session as a studio, and a
+    // forwarded "BAJA" would record an opt-out for him. Anything else he sends
+    // (his test bookings, "page", "form") goes on exactly as before. Fail
+    // closed: a forward or a relay tap that hits an error is never read as one
+    // of his test bookings.
+    if (rMode !== "off") {
+      try {
+        if (await relayTurn({ from: digitsOf(from), msg, text, replyId, voice, relayIn, mode: rMode })) return new Response("OK", { status: 200 });
+      } catch (e) {
+        console.log("[relay] turn failed", String(e));
+        if (relayIn || /^rly_/.test(replyId)) {
+          quietThisTurn = true;
+          await sendText(digitsOf(from), "The relay hit an error, so nothing was saved. Forward it again in a minute.", { manual: true }).catch(() => false);
+          return new Response("OK", { status: 200 });
+        }
+      }
     }
 
     // v216: the message the /socios page prefills when its save cannot be

@@ -120,7 +120,7 @@ const isTestPhone = (p?: string | null) => {
 const SAID_NO_RE = /^(no|nope|nah|no gracias|no thanks|not now|ahora no|cancel|cancela|cancelar|cancelo|cancelled|canceled|anular|anula|stop|basta|para|d[eé]jalo|ya no|no quiero|no hace falta|olv[ií]dalo|forget it|never ?mind)\b/i;
 const NO_INSIDE_RE = /\b(cancel(a|ar|o|ad[oa]|led|ed)?|anular|ya no (quiero|puedo|me interesa)|no quiero|no me interesa|dejadme|d[eé]jame en paz|stop|not going to|won'?t be|no longer|not having|not interested|leaving madrid|don'?t need|no need|not (any ?more|anymore)|any massage)\b/i;
 async function customerSaidNo(phone: string, H: Record<string, string>): Promise<boolean> {
-  const rows = await (await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${phone}&direction=eq.in&order=created_at.desc&limit=3&select=body,created_at`, { headers: H })).json().catch(() => []);
+  const rows = await (await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${phone}&direction=eq.in&order=created_at.desc&limit=3&select=body,created_at`, { headers: H })).json().catch(() => []); // A0: words (did they say no)
   const dayAgo = Date.now() - 24 * 3600 * 1000;
   for (const m of (Array.isArray(rows) ? rows : [])) {
     if (Date.parse(m.created_at) < dayAgo) break;
@@ -432,7 +432,7 @@ async function handleRequest(req: Request): Promise<Response> {
         } else if (r.client_phone) {
           // B. WhatsApp path for email-skippers — only inside their 24h window.
           const to = digitsOf(r.client_phone);
-          const lastIn = await (await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${to}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`, { headers: H })).json().catch(() => []);
+          const lastIn = await (await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${to}&direction=eq.in&or=(msg_type.is.null,msg_type.neq.external)&order=created_at.desc&limit=1&select=created_at`, { headers: H })).json().catch(() => []);
           const lastInAt = Array.isArray(lastIn) && lastIn[0] ? Date.parse(lastIn[0].created_at) : 0;
           const inWindow = lastInAt > now - 23 * 60 * 60 * 1000;
           const sess = await (await fetch(`${SUPABASE_URL}/rest/v1/wa_sessions?phone=eq.${to}&select=step,data`, { headers: H })).json().catch(() => []);
@@ -510,9 +510,14 @@ async function handleRequest(req: Request): Promise<Response> {
       const reqs = await (await fetch(`${SUPABASE_URL}/rest/v1/whatsapp_requests?client_phone=eq.${encodeURIComponent("+" + phone)}&stage=neq.dismissed&created_at=gt.${cutReq}&select=id&limit=1`, { headers: H })).json().catch(() => []);
       if (Array.isArray(reqs) && reqs.length) continue;
       // Their last INBOUND message must be inside the 24h window (free-form send).
-      const lastIn = await (await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${phone}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`, { headers: H })).json().catch(() => []);
+      // Relay A0 (24 Nov 2026): the window is their last message to the bot,
+      // never words relayed from Jordan's phone (msg_type external); "they wrote
+      // in the last 2 hours" counts those words too.
+      const lastIn = await (await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${phone}&direction=eq.in&or=(msg_type.is.null,msg_type.neq.external)&order=created_at.desc&limit=1&select=created_at`, { headers: H })).json().catch(() => []);
       const lastInAt = Array.isArray(lastIn) && lastIn[0] ? Date.parse(lastIn[0].created_at) : 0;
-      if (!(lastInAt > now - 23 * 60 * 60 * 1000) || lastInAt > now - 2 * 60 * 60 * 1000) continue;
+      const lastAny = await (await fetch(`${SUPABASE_URL}/rest/v1/wa_messages?phone=eq.${phone}&direction=eq.in&order=created_at.desc&limit=1&select=created_at`, { headers: H })).json().catch(() => []); // A0: words (they wrote recently, relayed or not)
+      const lastAnyAt = Array.isArray(lastAny) && lastAny[0] ? Date.parse(lastAny[0].created_at) : 0;
+      if (!(lastInAt > now - 23 * 60 * 60 * 1000) || lastAnyAt > now - 2 * 60 * 60 * 1000) continue;
       // v8: "no" or "next week" style goodbyes are not an invitation to nudge.
       if (await customerSaidNo(phone, H)) { console.log(`[rescue] flow nudge skipped for ${phone}: said no`); continue; }
       // v10: and neither is an unanswered question. If the bot said it was
