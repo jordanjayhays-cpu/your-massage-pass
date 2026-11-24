@@ -167,10 +167,11 @@ export default function PartnerCalendar() {
         ? { closed: true }
         : { open: h.open, close: h.close };
     }
-    await supabase
+    const { error: hoursError } = await supabase
       .from("partners")
       .update({ opening_hours, capacity: Math.max(1, capacity), hours_confirmed_at: new Date().toISOString() })
       .eq("id", user.id);
+    if (hoursError) { toast.error(t("partner.calendar.toastError", { message: hoursError.message })); setLoading(false); return; }
 
     setLoading(false);
     setSaved(true);

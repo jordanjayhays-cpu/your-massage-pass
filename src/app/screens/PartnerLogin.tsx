@@ -52,13 +52,16 @@ export default function PartnerLogin() {
         return;
       }
       if (data.user) {
-        // Create partner record in DB
-        await supabase.from("partners").insert({
+        // Create partner record in DB. Not blocking: /partner/onboarding
+        // upserts the same row, and before email confirmation there is no
+        // session yet, so this insert can fail harmlessly. Logged, not silent.
+        const { error: insertError } = await supabase.from("partners").insert({
           id: data.user.id,
           business_name: businessName,
           email,
           status: "pending"
         });
+        if (insertError) console.error("[partner-login] partner row insert failed", insertError.message);
         navigate("/partner/onboarding");
       }
     } else {

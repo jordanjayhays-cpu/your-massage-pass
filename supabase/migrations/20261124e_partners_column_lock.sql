@@ -1,11 +1,15 @@
 -- DRAFT, NOT APPLIED. Step 3 of 3 of the partners lock. Apply ONLY after
 -- step 1 (20261124d_partners_claim_rpcs.sql) is live AND the site change
--- (step 2: no select("*") on partners, claim page through claim_lookup and
--- claim_token_for_slug, no google_calendar_id reads, calendar disconnect
--- through partner_disconnect_calendar) is deployed on book.massageclub.io
--- and checked there. The site change must ship first: once this runs, the
--- old site's select("*") reads (directory, studio page, studio portal,
--- founder concierge tab) fail with 42501.
+-- (step 2: no select("*") on partners, claim page by slug or through
+-- claim_lookup, claim merge through claim_release_verified, no
+-- google_calendar_id reads, calendar disconnect through
+-- partner_disconnect_calendar) is deployed on book.massageclub.io and
+-- checked there. The site change must ship first: once this runs, the old
+-- site's select("*") reads (directory, studio page, studio portal, founder
+-- concierge tab) fail with 42501.
+--
+-- Rehearse first, as ONE execute_sql call that can never commit:
+-- supabase/checks/20261124e_rehearsal.sql says how.
 --
 -- What it does
 --   * anon and authenticated lose every table-level privilege on partners
@@ -45,8 +49,11 @@
 --     INSERT/UPDATE grant. Never add a token, code or secret column to either.
 --
 -- The DO block at the end refuses to finish (rolling the whole migration
--- back) if any live column is in neither list, if a hidden column is still
--- readable or writable, or if a listed column is not.
+-- back) if step 1 is not live, if any live column is in neither list, if a
+-- hidden column is still readable or writable, if the INSERT/UPDATE columns
+-- are not exactly the writable list, if PUBLIC holds anything on partners,
+-- or if the public key or a signed-in studio can run a claim or digest
+-- function it must not.
 
 revoke all on table public.partners from anon, authenticated;
 
@@ -123,13 +130,19 @@ declare
     ];
   c text;
   r text;
+  f text;
 begin
   -- Step 1 must be live, or the claim page, the calendar disconnect and
   -- /match break the moment the grants change.
   if to_regprocedure('public.claim_lookup(uuid)') is null
-     or to_regprocedure('public.claim_token_for_slug(text)') is null
-     or to_regprocedure('public.partner_disconnect_calendar()') is null then
+     or to_regprocedure('public.claim_release_verified(uuid)') is null
+     or to_regprocedure('public.partner_disconnect_calendar()') is null
+     or to_regclass('public.claim_reviews') is null then
     raise exception 'apply 20261124d_partners_claim_rpcs.sql first';
+  end if;
+  -- The slug must never turn into a claim token for the public key again.
+  if to_regprocedure('public.claim_token_for_slug(text)') is not null then
+    raise exception 'claim_token_for_slug exists: it gives out claim tokens, drop it';
   end if;
   if (select p.prosrc from pg_proc p
       where p.oid = to_regprocedure('public.match_studios(text,text,uuid,integer)')) ~ 'p\.\*' then
@@ -161,10 +174,20 @@ begin
       raise exception '% can still delete from partners', r;
     end if;
   end loop;
-  foreach c in array writable loop
-    if not has_column_privilege('authenticated', 'public.partners', c, 'UPDATE')
-       or not has_column_privilege('authenticated', 'public.partners', c, 'INSERT') then
-      raise exception 'authenticated cannot write partners.%', c;
+  -- INSERT and UPDATE: exactly the writable list for authenticated, nothing
+  -- for anon, on every live column.
+  for c in
+    select a.attname from pg_attribute a
+    where a.attrelid = 'public.partners'::regclass and a.attnum > 0 and not a.attisdropped
+  loop
+    if c = any(writable) then
+      if not has_column_privilege('authenticated', 'public.partners', c, 'UPDATE')
+         or not has_column_privilege('authenticated', 'public.partners', c, 'INSERT') then
+        raise exception 'authenticated cannot write partners.%', c;
+      end if;
+    elsif has_column_privilege('authenticated', 'public.partners', c, 'UPDATE')
+       or has_column_privilege('authenticated', 'public.partners', c, 'INSERT') then
+      raise exception 'authenticated can write partners.%, which is not in the writable list', c;
     end if;
     if has_column_privilege('anon', 'public.partners', c, 'UPDATE')
        or has_column_privilege('anon', 'public.partners', c, 'INSERT') then
@@ -174,6 +197,43 @@ begin
   if has_column_privilege('authenticated', 'public.partners', 'outreach_status', 'UPDATE') then
     raise exception 'authenticated can still reset outreach_status';
   end if;
+  -- PUBLIC (every role) must hold nothing on partners.
+  if exists (select 1 from pg_class cl, aclexplode(cl.relacl) x
+             where cl.oid = 'public.partners'::regclass and x.grantee = 0) then
+    raise exception 'PUBLIC holds a privilege on partners';
+  end if;
+  if exists (select 1 from pg_attribute a, aclexplode(a.attacl) x
+             where a.attrelid = 'public.partners'::regclass and x.grantee = 0) then
+    raise exception 'PUBLIC holds a column privilege on partners';
+  end if;
+  -- Functions the public key must not run.
+  foreach f in array array[
+      'public.claim_release_prebuilt(uuid)', 'public.claim_release_verified(uuid)',
+      'public.partner_disconnect_calendar()', 'public.claim_activate_partner(uuid,text,text)',
+      'public.mc_cold_requests_digest()', 'public.mc_booking_link(text,text)'
+    ] loop
+    if to_regprocedure(f) is not null and has_function_privilege('anon', f, 'EXECUTE') then
+      raise exception 'anon can execute %', f;
+    end if;
+  end loop;
+  -- ...and the ones a signed-in studio must not run either.
+  foreach f in array array[
+      'public.claim_release_prebuilt(uuid)', 'public.claim_activate_partner(uuid,text,text)',
+      'public.mc_cold_requests_digest()', 'public.mc_booking_link(text,text)'
+    ] loop
+    if to_regprocedure(f) is not null and has_function_privilege('authenticated', f, 'EXECUTE') then
+      raise exception 'authenticated can execute %', f;
+    end if;
+  end loop;
+  -- Parked claims are for Jordan only.
+  foreach r in array array['anon', 'authenticated'] loop
+    if has_table_privilege(r, 'public.claim_reviews', 'SELECT')
+       or has_table_privilege(r, 'public.claim_reviews', 'INSERT')
+       or has_table_privilege(r, 'public.claim_reviews', 'UPDATE')
+       or has_table_privilege(r, 'public.claim_reviews', 'DELETE') then
+      raise exception '% has access to claim_reviews', r;
+    end if;
+  end loop;
   -- has_table_privilege with a list is true when ANY is held, so check each.
   foreach c in array array['SELECT', 'INSERT', 'UPDATE', 'DELETE'] loop
     if not has_table_privilege('service_role', 'public.partners', c) then

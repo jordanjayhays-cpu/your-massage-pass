@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 
-// Short branded claim link: /claim/<slug> → resolves the partner by slug and
-// forwards to the existing claim flow at /studio-setup?claim=<claim_token>.
+// Short branded claim link: /claim/<slug> (the link in the approved
+// lead-to-studio email) opens the claim flow by slug.
+//
+// Since 24 Nov 2026 the slug no longer turns into the studio's claim token:
+// tokens were readable with the public key, so a token proves nothing.
+// /studio-setup reads the studio's public fields by slug, and the merge of
+// the pre-built row needs proof of the email on file
+// (claim_release_verified, migration 20261124d).
 export default function ClaimShortLink() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -12,20 +17,7 @@ export default function ClaimShortLink() {
 
   useEffect(() => {
     if (!slug) { setError("Invalid link."); return; }
-    let cancelled = false;
-    (async () => {
-      // Since the 24 Nov column lock the public key cannot read claim_token.
-      // claim_token_for_slug returns it for a pending studio only, so an
-      // already-claimed (active) studio resolves to "not found" here.
-      const { data: token, error: err } = await supabase.rpc("claim_token_for_slug", { p_slug: slug });
-      if (cancelled) return;
-      if (err || typeof token !== "string" || !token) {
-        setError("This link is invalid or the studio has already been claimed. If that's you, log in at massageclub → Partner login.");
-        return;
-      }
-      navigate(`/studio-setup?claim=${encodeURIComponent(token)}`, { replace: true });
-    })();
-    return () => { cancelled = true; };
+    navigate(`/studio-setup?claim_slug=${encodeURIComponent(slug)}`, { replace: true });
   }, [slug, navigate]);
 
   return (

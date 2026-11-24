@@ -71,6 +71,12 @@ type Finding = { where: string; problem: string };
 
 const FILTERS = new Set(["eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "is", "in", "contains", "containedBy", "order", "not", "filter", "match", "textSearch"]);
 
+function unwrap(node: ts.Expression): ts.Expression {
+  let n = node;
+  while (ts.isParenthesizedExpression(n) || ts.isAsExpression(n) || ts.isNonNullExpression(n) || ts.isSatisfiesExpression(n)) n = n.expression;
+  return n;
+}
+
 function literal(node: ts.Node | undefined): string | null {
   if (!node) return null;
   if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
@@ -81,15 +87,46 @@ function literal(node: ts.Node | undefined): string | null {
   return null;
 }
 
-function objectKeys(node: ts.Node, out: string[]): void {
-  if (ts.isObjectLiteralExpression(node)) {
-    for (const p of node.properties) {
-      if ((ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)) && p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name))) out.push(p.name.text);
-      else if (ts.isSpreadAssignment(p)) objectKeys(p.expression, out);
-    }
-    return;
+/** Every value a column/select argument can take: both branches of `c ? "a" : "b"`. Null if any is not literal. */
+function literals(node: ts.Node | undefined): string[] | null {
+  if (!node) return null;
+  const n = ts.isExpression(node) ? unwrap(node) : node;
+  if (ts.isConditionalExpression(n)) {
+    const a = literals(n.whenTrue), b = literals(n.whenFalse);
+    return a && b ? [...a, ...b] : null;
   }
-  ts.forEachChild(node, (c) => objectKeys(c, out));
+  const s = literal(n);
+  return s === null ? null : [s];
+}
+
+/**
+ * Keys an object literal payload writes. Returns false when some keys cannot
+ * be known here (a spread of a variable, a computed key): the caller then
+ * treats the write as unresolved instead of letting it pass.
+ */
+function objectKeys(node: ts.Expression, out: string[]): boolean {
+  const n = unwrap(node);
+  if (ts.isConditionalExpression(n)) return objectKeys(n.whenTrue, out) && objectKeys(n.whenFalse, out);
+  if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) return objectKeys(n.right, out);
+  if (!ts.isObjectLiteralExpression(n)) return false;
+  let ok = true;
+  for (const p of n.properties) {
+    if (ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)) {
+      if (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) out.push(p.name.text);
+      else ok = false;
+    } else if (ts.isSpreadAssignment(p)) {
+      if (!objectKeys(p.expression, out)) ok = false;
+    } else ok = false;
+  }
+  return ok;
+}
+
+/** insert/update/upsert payload: an object literal, or an array literal of them. */
+function payloadKeys(node: ts.Expression | undefined, out: string[]): boolean {
+  if (!node) return false;
+  const n = unwrap(node);
+  if (ts.isArrayLiteralExpression(n)) return n.elements.length > 0 && n.elements.every((e) => !ts.isSpreadElement(e) && payloadKeys(e, out));
+  return objectKeys(n, out);
 }
 
 function scanSource(rel: string, source: string, findings: Finding[], unresolvedWrites: string[]): number {
@@ -123,34 +160,45 @@ function scanSource(rel: string, source: string, findings: Finding[], unresolved
           if (!arg0) findings.push({ where: at(call), problem: "select() with no columns is select *" });
           else if (ts.isIdentifier(arg0) && arg0.text === "PARTNER_PUBLIC_COLUMNS") { /* checked below */ }
           else {
-            const s = literal(arg0);
-            if (s === null) findings.push({ where: at(call), problem: "select() argument must be a literal list or PARTNER_PUBLIC_COLUMNS" });
-            else for (const c of selectColumns(s)) {
+            const all = literals(arg0);
+            if (all === null) findings.push({ where: at(call), problem: "select() argument must be a literal list or PARTNER_PUBLIC_COLUMNS" });
+            else for (const s of all) for (const c of selectColumns(s)) {
               if (c === "*" || !READABLE.has(c)) findings.push({ where: at(call), problem: `select of "${c}" is not readable` });
             }
           }
         } else if (method === "insert" || method === "update" || method === "upsert") {
           wrote = true;
-          if (arg0 && ts.isObjectLiteralExpression(arg0)) {
-            const keys: string[] = [];
-            objectKeys(arg0, keys);
-            for (const k of keys) if (!WRITABLE.has(k)) findings.push({ where: at(call), problem: `${method} of "${k}" is not granted` });
-          } else unresolvedWrites.push(`${rel}:${method}(${arg0 ? arg0.getText(sf) : ""})`);
+          const keys: string[] = [];
+          const known = payloadKeys(arg0, keys);
+          for (const k of keys) if (!WRITABLE.has(k)) findings.push({ where: at(call), problem: `${method} of "${k}" is not granted` });
+          if (!known) unresolvedWrites.push(`${rel}:${method}(${arg0 ? arg0.getText(sf) : ""})`);
         } else if (method === "delete") {
           findings.push({ where: at(call), problem: "delete on partners is not granted" });
         } else if (FILTERS.has(method)) {
-          const col = literal(arg0);
-          if (col !== null && !READABLE.has(col)) findings.push({ where: at(call), problem: `${method}("${col}") filters on a column that is not readable` });
+          const cols = literals(arg0);
+          if (cols === null) unresolvedWrites.push(`${rel}:${method}(${arg0 ? arg0.getText(sf) : ""})`);
+          else for (const col of cols) {
+            if (!READABLE.has(col)) findings.push({ where: at(call), problem: `${method}("${col}") filters on a column that is not readable` });
+          }
         } else if (method === "or") {
-          const s = literal(arg0) ?? "";
-          for (const part of s.split(",")) {
-            const col = part.trim().split(".")[0];
+          const all = literals(arg0);
+          if (all === null) unresolvedWrites.push(`${rel}:or(${arg0 ? arg0.getText(sf) : ""})`);
+          else for (const s of all) for (const part of s.split(",")) {
+            const col = part.trim().replace(/^(and|or|not)\(/, "").split(".")[0];
             if (col && !READABLE.has(col)) findings.push({ where: at(call), problem: `or() filters on "${col}"` });
           }
         }
         cur = call;
       }
       if (!selected && !wrote) findings.push({ where: at(node), problem: "partners chain with neither select nor write" });
+      // A query builder kept in a variable, or returned, gets more filters or
+      // writes elsewhere that this walk cannot see.
+      let up: ts.Node = cur.parent;
+      while (ts.isParenthesizedExpression(up) || ts.isAsExpression(up) || ts.isNonNullExpression(up)) up = up.parent;
+      if (ts.isVariableDeclaration(up) || ts.isReturnStatement(up) || ts.isArrowFunction(up) || ts.isPropertyAssignment(up)
+          || (ts.isBinaryExpression(up) && up.operatorToken.kind === ts.SyntaxKind.EqualsToken)) {
+        unresolvedWrites.push(`${rel}:partners query builder kept in a variable or returned`);
+      }
     }
     ts.forEachChild(node, visit);
   };
@@ -197,6 +245,20 @@ describe("partners column lock", () => {
       // profileForm: business_name, address, phone, website, description
       "src/app/screens/StudioPortal.tsx:update(profileForm)",
     ]);
+  });
+
+  it("the site never asks for a claim token or runs a service-role claim function", () => {
+    // claim_token_for_slug handed out claim tokens (never live); since
+    // 20261124d claim_release_prebuilt is service role only and signed-in
+    // studios use claim_release_verified, which needs proof of the email.
+    const findings: string[] = [];
+    for (const rel of [...filesUnder("src", [".ts", ".tsx"]), ...filesUnder("public", [".html", ".js"])]) {
+      const src = fs.readFileSync(path.join(ROOT, rel), "utf8");
+      for (const fn of ["claim_token_for_slug", "claim_release_prebuilt"]) {
+        if (src.includes(fn)) findings.push(`${rel}: ${fn}`);
+      }
+    }
+    expect(findings).toEqual([]);
   });
 
   it("public/*.html REST reads of partners name readable columns only", () => {

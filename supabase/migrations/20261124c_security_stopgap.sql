@@ -13,11 +13,18 @@
 -- If a fresh database (a branch, db reset) ever replays it, that is harmless:
 -- create or replace with the same signature, then the same grants again.
 --
--- Known gap, closed by the partners column lock that follows
--- (20261124e_partners_column_lock.sql): the "one release per account" guard
--- reads partners.outreach_status, and until that lock a signed-in studio can
--- still UPDATE its own outreach_status (and DELETE and re-insert its own row)
--- through the partners_owner_all policy, which resets the guard.
+-- Known gaps, closed by the two migrations that follow:
+--   * every claim token was readable with the public key and slugs are
+--     public, so any signed-in account could still call
+--     claim_release_prebuilt and take over a pending studio's page.
+--     20261124d_partners_claim_rpcs.sql makes it service-role only; signed-in
+--     studios use claim_release_verified, which needs proof of control of
+--     the email on file.
+--   * the "one release per account" guard reads partners.outreach_status,
+--     which a signed-in studio can still UPDATE on its own row (and DELETE
+--     and re-insert the row) through the partners_owner_all policy, which
+--     resets the guard. 20261124e_partners_column_lock.sql removes those
+--     privileges.
 
 -- 24 Nov 2026 (Jordan: "Yes, close it now"). Stopgap: the public (anon) key
 -- could call these SECURITY DEFINER functions directly.
