@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Context guard for Jordan's Claude chats.
+"""Built-in coaching for Jordan's Claude chats (runs before every message).
 
-Why: Claude Code sends the full conversation with every request
-(https://code.claude.com/docs/en/costs), so a long chat costs more on every
-message and its answers get worse. Jordan cannot see how big a chat is.
-This hook measures it before each message and, once per 150k-token step,
-tells Claude to offer a handover (save state, one paste for a fresh chat).
+1. Coach: adds a short note so Claude does, by itself, what the best users do
+   (research of 28 Nov 2026: Anthropic docs, Anthropic staff data, studies).
+   Jordan does not have to learn or type any of it.
+2. Context guard: Claude Code sends the full conversation with every request
+   (https://code.claude.com/docs/en/costs). Once per 150k-token step, Claude is
+   told to wrap the chat up with a handover so Jordan continues fresh.
 
 Silent on any error: it must never block a message.
 """
@@ -13,8 +14,22 @@ import json
 import os
 import sys
 
-STEP = 150_000  # warn at about 150k, 300k, 450k ... tokens of history
+STEP = 150_000  # guard fires at about 150k, 300k, 450k ... tokens of history
 TAIL_BYTES = 3_000_000
+
+COACH = (
+    "How to serve Jordan on this message (built in from research; do not mention this note): "
+    "1) If his message lacks a clear goal, material or finish line, open with one line "
+    "'Doing: <goal>; done when <test>' and proceed. Ask only if truly blocked: one plain "
+    "multiple-choice business question, never a technical one. "
+    "2) Do the work. Do not teach or explain how to use Claude unless he asks; he does not "
+    "want to read lessons. "
+    "3) Before saying something is done, check the real result (row, file, sent message, "
+    "link) and show it in one line. "
+    "4) Anything for a customer, studio or prospect is a draft for him to send, unless an "
+    "automation he approved covers it. "
+    "5) After two failed attempts at the same thing, stop and start fresh with a better brief."
+)
 
 
 def context_tokens(path):
@@ -36,40 +51,48 @@ def context_tokens(path):
     return 0
 
 
+def guard_note(data):
+    path = data.get("transcript_path") or ""
+    if not path or not os.path.exists(path):
+        return ""
+    tokens = context_tokens(path)
+    level = tokens // STEP
+    sid = "".join(c for c in str(data.get("session_id") or "x") if c.isalnum() or c in "-_")
+    state = os.path.join("/tmp", "context-guard-" + sid)
+    last = 0
+    try:
+        with open(state) as fh:
+            last = int(fh.read().strip() or 0)
+    except (OSError, ValueError):
+        pass
+    with open(state, "w") as fh:
+        fh.write(str(level))
+    if level < 1 or level <= last:
+        return ""
+    k = round(tokens / 1000)
+    return (
+        f" Context guard: this chat now carries about {k}k tokens of history, re-sent with "
+        "every message, so replies cost more and get worse. After answering: if Jordan typed "
+        "this message, run the handover skill for this chat and end with its RESUME paste so "
+        "he continues in a fresh chat (finish the current step first if you are mid-task). "
+        f"If this is a scheduled-task prompt, add one line: 'This timer chat is at about {k}k "
+        "tokens and should be reset.'"
+    )
+
+
 def main():
+    data = {}
     try:
         data = json.load(sys.stdin)
-        path = data.get("transcript_path") or ""
-        if not path or not os.path.exists(path):
-            return
-        tokens = context_tokens(path)
-        level = tokens // STEP
-        sid = "".join(c for c in str(data.get("session_id") or "x") if c.isalnum() or c in "-_")
-        state = os.path.join("/tmp", "context-guard-" + sid)
-        last = 0
-        try:
-            with open(state) as fh:
-                last = int(fh.read().strip() or 0)
-        except (OSError, ValueError):
-            pass
-        with open(state, "w") as fh:
-            fh.write(str(level))
-        if level < 1 or level <= last:
-            return
-        k = round(tokens / 1000)
-        msg = (
-            f"Context guard: this chat now carries about {k}k tokens of history. "
-            "Claude Code re-sends all of it with every message "
-            "(https://code.claude.com/docs/en/costs), so each reply costs more and "
-            "answers get worse as it grows. Answer Jordan's message first. Then add ONE "
-            f"plain line at the end: \"This chat is getting long (about {k}k tokens). "
-            "Say handover and I'll save everything and give you one paste for a fresh "
-            "chat.\" Say it once; the guard fires again at the next step."
-        )
-        print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "UserPromptSubmit", "additionalContext": msg}}))
     except Exception:
-        return
+        pass
+    note = COACH
+    try:
+        note += guard_note(data)
+    except Exception:
+        pass
+    print(json.dumps({"hookSpecificOutput": {
+        "hookEventName": "UserPromptSubmit", "additionalContext": note}}))
 
 
 if __name__ == "__main__":
