@@ -211,7 +211,8 @@ const IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 const IMAGE_READ_MAX = 1500;
 const IMAGE_READ_PROMPT = "This image was sent on WhatsApp by a massage studio in Madrid, in reply to a booking request. Return the text visible in it verbatim, in its original language. If it is a price list, a menu or a schedule, give every time, duration and price it shows. Return only that, with no comments of your own. If nothing in it is readable, return nothing.";
 // What the model says when it read nothing, in the words models use for it.
-const IMAGE_NOTHING_RE = /^[\s\[("'*_]*(nothing( (is )?readable)?|none|empty|n\/a|no (readable |visible )?text|there is no (readable |visible )?text|no text (is )?(visible|readable|found)|sin texto|no hay texto)\b/i;
+// The whole answer only: "None of us is free at 18:00, at 19:00 yes" is kept.
+const IMAGE_NOTHING_RE = /^[\s\[("'*_.]*(nothing( (is )?readable)?|none|empty|n\/a|no (readable |visible )?text( (is )?(visible|readable|found))?|(there is|the image (contains|has)) no (readable |visible )?text|i (cannot|can't|can not) (read|see) any text|sin texto|no hay texto( legible)?)( in (this|the) (image|photo))?[\s\])"'*_.!]*$/i;
 // A photo we can read: an image, or a document that is one (its caption too).
 function inboundImage(msg: any): { id: string; mime: string; caption: string } | null {
   const doc = msg?.type === "document" && /^image\//i.test(String(msg?.document?.mime_type || "")) ? msg.document : null;
@@ -283,13 +284,13 @@ function photoText(caption: string, read: string): string {
 // The alert is one 300-character template blank that ends in the reply link
 // (notifyJordanWa), so the studio's name gives way, never the media link.
 async function studioMediaUnread(from: string, partner: { id: string; business_name: string }, type: string, path: string | null, asked: boolean): Promise<void> {
-  const what = type === "image" ? "photo" : type === "audio" ? "voice note" : type === "document" ? "file" : type === "contacts" ? "contact card" : type;
+  const what = ({ image: "photo", audio: "voice note", document: "file", contacts: "contact card", unsupported: "poll or view-once message", order: "catalogue order" } as Record<string, string>)[type] || type;
   const link = path ? `${SUPABASE_URL}/functions/v1/wa-bot?media=${encodeURIComponent(path)}&sig=${await replySig(digitsOf(from))}` : "";
   await founderCard(`📎 ${partner.business_name} sent a ${what}`, {
     badge: "STUDIO MEDIA", title: `${partner.business_name} sent a ${what} the bot could not read`,
     paras: [
       `${asked ? "They have an open request from us, so it may be their answer (a time or a price)." : "They have no open request from us."} Nothing was said back to them.`,
-      link ? "" : "It could not be saved here: open the chat on WhatsApp to see it.",
+      link ? "" : "It is not saved here: open the chat on WhatsApp to see it.",
     ],
     links: link ? [{ href: link, label: `Open the ${what}`, primary: true }] : [],
     waNum: from, waLabel: "Open the chat", prefill: "Hola, soy Jordan, de Massage Club. ",
