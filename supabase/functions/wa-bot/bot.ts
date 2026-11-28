@@ -202,10 +202,15 @@ async function handleVoice(mediaId: string, from: string): Promise<{ path: strin
 // way for you to read this"). The photo is saved where voice notes are
 // (wa-media, opened by the same signed ?media= link) and read by the model the
 // voice fallback already uses (OpenRouter, TRANSCRIBE_MODEL_OR or Gemini
-// Flash-Lite). What it reads goes on as the studio's reply (handler). Only a
-// partner's photo is read: a customer's is never downloaded or sent to a
-// model. IMAGE_READ in app_secrets: "off" stops the model call (the photo is
-// still saved and Jordan still alerted); anything else, or nothing, is on.
+// Flash-Lite). What it reads goes to Jordan on the photo card, never on as
+// the studio's reply (review, 28 Nov): a model's reading of a price list
+// ("21% IVA incluido"), a promo flyer or an agenda is not the studio's
+// written word, and as text it became a discount, an offered time, a quoted
+// price or an away message. Only the caption, the studio's own words, goes on
+// as a typed reply (handler). Only a partner's photo is read: a customer's is
+// never downloaded or sent to a model. IMAGE_READ in app_secrets: "off" stops
+// the model call (the photo is still saved and Jordan still gets the card);
+// anything else, or nothing, is on.
 const IMAGE_MIMES: Record<string, string> = { "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp" };
 const IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 const IMAGE_READ_MAX = 1500;
@@ -270,32 +275,43 @@ async function readImage(mediaId: string, from: string, mimeHint = ""): Promise<
   } catch (e) { console.log("[wa] photo failed", String(e)); }
   return { path, text };
 }
-// What the studio path reads for a photo: its caption (the studio's own
-// words), then what was read in it behind "(foto) ". The mark tells Jordan's
-// cards where the words came from, and keeps a photo from ever being a bare
-// "Sí" (the yes tap) or a plain "ok" answered with silence. A time, a price or
-// a discount anywhere in it is still found, as in a typed reply.
-function photoText(caption: string, read: string): string {
-  return [String(caption || "").trim(), read ? `(foto) ${read}` : ""].filter(Boolean).join("\n");
+// An ask of ours this studio has not closed, from the last 48 hours.
+async function studioHasOpenAsk(from: string): Promise<boolean> {
+  const rows = await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?phone=eq.${digitsOf(from)}&outcome=in.(pending,accepted)&created_at=gte.${new Date(Date.now() - 48 * 3600e3).toISOString()}&limit=1&select=id`, { headers: H() }).then((r) => r.json()).catch(() => []);
+  return Array.isArray(rows) && rows.length > 0;
 }
-// A studio's photo, sticker, video, file or voice note the bot could not read.
-// Nothing goes back to the studio (no "no puedo abrir fotos"); Jordan gets the
-// card and a WhatsApp alert, with the link to the media when it was saved.
+// A studio's photo (read or not), or a sticker, video, file or voice note the
+// bot could not read. Nothing goes back to the studio about it (no "no puedo
+// abrir fotos"); Jordan gets the card, with what was read in a photo (read)
+// and the link to the media when it was saved, and a WhatsApp alert. Nothing
+// read in a photo is acted on. A caption went on as a typed reply before this.
 // The alert is one 300-character template blank that ends in the reply link
-// (notifyJordanWa), so the studio's name gives way, never the media link.
-async function studioMediaUnread(from: string, partner: { id: string; business_name: string }, type: string, path: string | null, asked: boolean): Promise<void> {
+// (notifyJordanWa), so the studio's name gives way, never the media link. No
+// alert for a sticker (the card is enough), and at most one per studio in 10
+// minutes (an album is one webhook per photo; each still gets its card). A
+// check that fails lets the alert through.
+async function studioMediaUnread(from: string, partner: { id: string; business_name: string }, type: string, path: string | null, asked: boolean, read = "", caption = ""): Promise<void> {
   const what = ({ image: "photo", audio: "voice note", document: "file", contacts: "contact card", unsupported: "poll or view-once message", order: "catalogue order" } as Record<string, string>)[type] || type;
   const link = path ? `${SUPABASE_URL}/functions/v1/wa-bot?media=${encodeURIComponent(path)}&sig=${await replySig(digitsOf(from))}` : "";
-  await founderCard(`📎 ${partner.business_name} sent a ${what}`, {
-    badge: "STUDIO MEDIA", title: `${partner.business_name} sent a ${what} the bot could not read`,
+  const cap = String(caption || "").trim();
+  await founderCard(read ? `📷 ${partner.business_name} sent a photo` : `📎 ${partner.business_name} sent a ${what}`, {
+    badge: read ? "STUDIO PHOTO" : "STUDIO MEDIA",
+    title: read ? `${partner.business_name} sent a photo: what the bot read in it is below` : `${partner.business_name} sent a ${what} the bot could not read`,
     paras: [
-      `${asked ? "They have an open request from us, so it may be their answer (a time or a price)." : "They have no open request from us."} Nothing was said back to them.`,
+      `${asked ? "They have an open request from us, so it may be their answer (a time or a price)." : "They have no open request from us."} ${cap ? `Their caption was handled as a typed message: "${cap.slice(0, 200)}".` : "Nothing was said back to them."}`,
+      read ? "Nothing read in the photo was acted on: no time, price or discount from it goes to a customer, and it is not the studio's yes. If it answers our ask, reply to the studio below." : "",
       link ? "" : "It is not saved here: open the chat on WhatsApp to see it.",
     ],
+    quote: read,
     links: link ? [{ href: link, label: `Open the ${what}`, primary: true }] : [],
     waNum: from, waLabel: "Open the chat", prefill: "Hola, soy Jordan, de Massage Club. ",
   }).catch(() => {});
-  const tail = `: ${what} not read, no reply sent.`;
+  if (type === "sticker") return;
+  const since = new Date(Date.now() - 10 * 60e3).toISOString();
+  const recent = await fetch(`${SUPABASE_URL}/rest/v1/funnel_events?phone=eq.${digitsOf(from)}&event=eq.studio_media_alert&created_at=gte.${since}&select=id&limit=1`, { headers: H() }).then((r) => r.json()).catch(() => []);
+  if (Array.isArray(recent) && recent.length) return;
+  await logEvent(from, "studio_media_alert", { type, read: !!read });
+  const tail = read ? `: photo read (on the card), nothing done with it${cap ? "" : ", no reply sent"}.` : `: ${what} not read${cap ? "" : ", no reply sent"}.`;
   let name = partner.business_name || "+" + digitsOf(from);
   if (link) {
     const room = 300 - ` Reply as the bot: ${await replyUrl(from)}`.length - link.length - 1 - tail.length;
@@ -2389,9 +2405,9 @@ const MEDIA_LINE: Record<string, string> = {
   en: "Perdona, aquí no podemos ver imágenes ni archivos. ¿Nos lo escribes en un mensaje?\n\nSorry, we can't open images or files here. Could you type it instead?",
 };
 // v223 (28 Nov): STUDIO_MEDIA_LINE ("Por aquí no puedo abrir fotos ni
-// audios...") is gone. A studio's photo is read (readImage), and media the bot
-// still cannot read gets no reply to the studio, only an alert to Jordan
-// (studioMediaUnread).
+// audios...") is gone. A studio's photo is read (readImage) and shown to
+// Jordan; it and media the bot cannot read get no reply to the studio, only
+// Jordan's card and alert (studioMediaUnread).
 // v212: the holding line a studio gets when nothing else answered it. The
 // customers' line said "te" (tú) to a studio and promised a reply that
 // depends on Jordan seeing a ping.
@@ -13202,8 +13218,8 @@ const handleInner = async (req: Request) => {
     }
     // v223 (28 Nov): a studio's photo is saved and read like its voice notes
     // (readImage). Only a partner's: a customer's photo is never downloaded or
-    // sent to a model, and goes on exactly as before. What it says reaches the
-    // studio path below, after the letters check (photoText).
+    // sent to a model, and goes on exactly as before. What was read goes to
+    // Jordan's card in the studio branch below, never into `text`.
     let photo: { path: string | null; text: string; caption: string } | null = null;
     const img = inboundImage(msg);
     if (img && await findPartnerByNumber(digitsOf(from)).catch(() => null)) photo = { ...(await readImage(img.id, from, img.mime)), caption: img.caption };
@@ -13283,10 +13299,13 @@ const handleInner = async (req: Request) => {
     if (text && !replyId && await handleLetterReply(from, text).catch((e) => { console.log("[letters] reply handling failed", String(e)); return false; })) {
       return new Response("OK", { status: 200 });
     }
-    // v223 (28 Nov): a studio's photo is its reply from here on, and only from
-    // here: what a model read in a picture is never a BAJA or the /socios
-    // message above, which need the studio's own words.
-    if (photo && !text) text = photoText(photo.caption, photo.text);
+    // v223 (28 Nov): a studio photo's caption, the studio's own words, is its
+    // typed reply from here on. What the model read in the photo never is
+    // (review, 28 Nov: "21% IVA incluido" on a price list was a 21% discount
+    // and an offer to the customer, an agenda's 10:00 an offered time, an
+    // hours flyer an away message that silenced the photo). It goes to Jordan
+    // on the photo card (studioMediaUnread) and nowhere else.
+    if (photo && !text) text = photo.caption;
 
     // ---- Studio replies: template button payloads, or free text from a partner number ----
     if (/^arr_(yes|no)_\d+$/.test(replyId)) {
@@ -13363,16 +13382,19 @@ const handleInner = async (req: Request) => {
           // nothing), so Jordan is shown it.
           // v223 (28 Nov): and the studio is no longer asked to type it out
           // (STUDIO_MEDIA_LINE is gone; Jordan: "never respond like this"). A
-          // photo we could read never gets here: it went on as text above.
-          // What is left (a photo with nothing readable, a sticker, a video, an
-          // untranscribed voice note) gets no reply; Jordan gets the card and
-          // a WhatsApp alert with the link to it.
+          // photo with no caption, read or not, a sticker, a video, an
+          // untranscribed voice note: no reply; Jordan gets the card (with
+          // what was read in a photo) and a WhatsApp alert with the link.
           quietThisTurn = true;
-          const openAsk = msg.type === "sticker" ? [] : await fetch(`${SUPABASE_URL}/rest/v1/request_dispatch?phone=eq.${digitsOf(from)}&outcome=in.(pending,accepted)&created_at=gte.${new Date(Date.now() - 48 * 3600e3).toISOString()}&limit=1&select=id`, { headers: H() }).then((r) => r.json()).catch(() => []);
-          const asked = Array.isArray(openAsk) && openAsk.length > 0;
-          await studioMediaUnread(from, partner, String(msg.type), photo?.path || voice?.path || null, asked);
+          const asked = msg.type === "sticker" ? false : await studioHasOpenAsk(from);
+          await studioMediaUnread(from, partner, photo ? "image" : String(msg.type), photo?.path || voice?.path || null, asked, photo?.text || "");
         }
         else console.log(`[wa] non-text message from partner ${partner.business_name}, ignored`);
+        // v223 review (28 Nov): a photo with a caption. The caption went on
+        // above as a typed reply; Jordan still gets the photo, read or not, so
+        // it never goes unseen (an unread photo with a caption used to reach
+        // no card at all).
+        if (photo && text) await studioMediaUnread(from, partner, "image", photo.path, await studioHasOpenAsk(from), photo.text, photo.caption);
         return new Response("OK", { status: 200 });
       }
     }
