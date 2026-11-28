@@ -14,11 +14,14 @@
 //   2. cleanImageRead: the model's "no text" is nothing
 //   3. readImage, readable: Graph, download, wa-media, the voice fallback's model
 //   4. readImage, every failure: empty text, never a throw
-//   5. photoText: times, prices and discounts still found; never a bare yes
-//   6. studioMediaUnread: no word to the studio; Jordan's card and alert, the
-//      media link whole inside the 300-character alert
-//   7. the partner branch of the handler, run: a readable photo is a reply, an
-//      unreadable one gets no studio message and Jordan is alerted
+//   5. why a photo's reading is never the studio's reply: the real parsers
+//      would take a price list's IVA for a discount, an agenda for an offer
+//   6. studioMediaUnread: no word to the studio; Jordan's card (with what was
+//      read) and alert, the media link whole inside the 300-character alert;
+//      no alert for a sticker, one per studio in 10 minutes
+//   7. the partner branch of the handler, run: a photo's reading goes only to
+//      Jordan's card, never to handleStudioReply; a caption goes on as typed,
+//      and the photo still reaches Jordan
 //   8. the handler's wiring (source order), the media page, no STUDIO_MEDIA_LINE
 //   9. ops "read_image_test": the same model call, sends nothing
 //
@@ -74,13 +77,13 @@ const blk = between(botSrc, START, END);
 check("0 setup", "the v223 block is marked in bot.ts", !!blk, true, "tests lift it between its markers");
 // A bot.ts without the block (before v223) answers "MISSING" everywhere, so
 // BOT=<an older bot.ts> lists every check it fails instead of stopping.
-const MISSING_BLOCK = ["inboundImage", "cleanImageRead", "visionRead", "readImage", "photoText", "studioMediaUnread"].map((n) => `function ${n}() { return "MISSING"; }`).join("\n")
+const MISSING_BLOCK = ["inboundImage", "cleanImageRead", "visionRead", "readImage", "studioHasOpenAsk", "studioMediaUnread"].map((n) => `function ${n}() { return "MISSING"; }`).join("\n")
   + `\nconst IMAGE_READ_PROMPT = "MISSING", IMAGE_READ_MAX = 0, IMAGE_MAX_BYTES = 0;\n`;
 const parts = [one("REPLY_BASE"), lift(botSrc, "async function replySig("), lift(botSrc, "async function replyUrl("), one("FAKE_NUM_RE"), one("aboutFakeCustomer"), one("tp"), lift(botSrc, "async function notifyJordanWa(")];
 check("0 setup", "the alert's parts are found", parts.map(Boolean), parts.map(() => true));
 const B = await load(`
 import { JORDAN_MAIN_NUMBER } from ${JSON.stringify(copyUrl)};
-export const S = { secrets: {}, cards: [], templates: [], calls: [], studio: [], fetchImpl: async () => res(404, {}) };
+export const S = { secrets: {}, cards: [], templates: [], calls: [], studio: [], events: [], fetchImpl: async () => res(404, {}) };
 const res = ${res.toString()};
 const fetch = async (u, o = {}) => { S.calls.push({ u: String(u), o }); return S.fetchImpl(String(u), o); };
 const SUPABASE_URL = "https://jglftdstrowwckwqmpue.supabase.co";
@@ -92,12 +95,13 @@ async function appSecret(k) { return S.secrets[k] || ""; }
 async function founderCard(subject, o) { S.cards.push({ subject, ...o }); }
 async function sendTemplate(to, name, lang, params) { S.templates.push({ to, name, params: params.map((p) => tp(p)) }); return true; }
 async function sendText(to, body) { S.studio.push({ to, body }); return true; }
+async function logEvent(phone, event, meta = {}) { S.events.push({ phone, event, meta }); }
 ${stripTypeScriptTypes(parts.join("\n"))}
 ${stripTypeScriptTypes(blk || MISSING_BLOCK)}
-export { inboundImage, cleanImageRead, visionRead, readImage, photoText, studioMediaUnread, IMAGE_READ_PROMPT, IMAGE_READ_MAX, IMAGE_MAX_BYTES, replyUrl, replySig };
+export { inboundImage, cleanImageRead, visionRead, readImage, studioHasOpenAsk, studioMediaUnread, IMAGE_READ_PROMPT, IMAGE_READ_MAX, IMAGE_MAX_BYTES, replyUrl, replySig };
 `);
 const S = B.S;
-const reset = () => { S.secrets = {}; S.cards.length = 0; S.templates.length = 0; S.calls.length = 0; S.studio.length = 0; S.fetchImpl = async () => res(404, {}); };
+const reset = () => { S.secrets = {}; S.cards.length = 0; S.templates.length = 0; S.calls.length = 0; S.studio.length = 0; S.events.length = 0; S.fetchImpl = async () => res(404, {}); };
 
 const STUDIO = "34000111222"; // invented
 const PARTNER = { id: "p-photo", business_name: "Estudio Ficticio" };
@@ -224,28 +228,30 @@ const hosts = () => S.calls.map((c) => c.u.startsWith("https://graph.facebook.co
 }
 
 // ---------------------------------------------------------------------------
-// 5. What the studio path reads. Times, prices and discounts are still found
-// (copy.ts and the studio parsers, the real ones); a photo is never the bare
-// "Sí" that counts as the yes tap, nor a plain "ok" answered with silence.
+// 5. Why a photo's reading is never the studio's reply (review, 28 Nov). The
+// real parsers (copy.ts, parseDiscount, AUTOREPLY_RE) on what a model reads in
+// ordinary studio pictures: each would have sent the customer an offer, a
+// discount or a price nobody wrote for this booking, or silenced the photo.
+// Group 7 shows none of these readings reaches the studio path.
 // ---------------------------------------------------------------------------
+const SAMPLES = {
+  iva: "Tarifas\nMasaje relajante 60 min 45€\nPrecios con 21% IVA incluido",
+  flyer: "-20% en tu primera visita\nMasaje 60 min 40€",
+  bono: "Bono 5 sesiones 10% dto",
+  twoMenu: "Masaje relajante 60 min 45€\nMasaje deportivo 60 min 55€",
+  agenda: "10:00 Ana G.\n11:30 Pedro\n13:00 libre",
+  hours: "HORARIO DE ATENCIÓN\nMartes a Domingo\n10:00 - 21:00",
+};
 {
-  const G = "5 photoText";
-  check(G, "read text, marked", B.photoText("", "Masaje 60 min 45€"), "(foto) Masaje 60 min 45€");
-  check(G, "the caption first (the studio's own words), then the photo", B.photoText(" Os paso las tarifas ", "Masaje 60 min 45€"), "Os paso las tarifas\n(foto) Masaje 60 min 45€");
-  check(G, "a caption alone", B.photoText("Tenemos a las 18:00", ""), "Tenemos a las 18:00");
-  check(G, "nothing read, no caption: nothing", B.photoText("", ""), "");
-  const offer = B.photoText("", "Sí, tenemos hueco a las 18:30. Masaje relajante 60 min 45€");
-  check(G, "a time is still an offered time", C.parseOfferedTime(offer), "18:30");
-  check(G, "a price is still a quoted price", C.parseQuotedPrice(offer), 45);
-  check(G, "a caption's time is read before the photo's", C.parseOfferedTime(B.photoText("Podemos a las 17:00", "Agenda 10:00 11:00 12:00")), "17:00");
-  check(G, "opening hours in a photo are not an offer (as typed)", C.parseOfferedTime(B.photoText("", "Horario: martes a domingo de 11:00 a 21:00")), "");
+  const G = "5 why a reading is not a reply";
   const replies = between(botSrc, "// ---- v219 studio replies: pure helpers (start) ----", "// ---- v219 studio replies: pure helpers (end) ----");
   const words = between(botSrc, "// ---- v219 (19 Nov 2026, #126): studio words: pure helpers (start)", "// ---- v219: studio words: pure helpers (end)");
   const R = await load(`import { AUTOREPLY_RE, parseQuotedPrice, parseOfferedTime } from ${JSON.stringify(copyUrl)};\n${stripTypeScriptTypes(replies + "\n" + words + "\n" + lift(botSrc, "function parseDiscount("))}\nexport { isAwayMessage, BARE_YES_RE, plainStudioAck, parseDiscount, ourQuestionOpen };\n`);
-  check(G, "a discount is still a discount", R.parseDiscount(B.photoText("", "Para Massage Club 10% de descuento")), 10);
-  check(G, "typed \"Sí\" is the yes; a photo reading \"Sí\" is not", [R.BARE_YES_RE.test("Sí"), R.BARE_YES_RE.test(B.photoText("", "Sí"))], [true, false], "BOTH PARTIES TAP: only the studio's own tap or words say yes");
-  check(G, "typed \"Ok\" is a silent ack; a photo reading \"Ok\" goes to Jordan", [R.plainStudioAck("Ok"), R.plainStudioAck(B.photoText("", "Ok"))], [true, false]);
-  check(G, "a price list 10 s after our ask is not an away message", R.isAwayMessage(B.photoText("", MENU), 10_000), false);
+  check(G, "the parsers are found", [typeof R.parseDiscount, typeof R.isAwayMessage, typeof R.BARE_YES_RE?.test], ["function", "function", "function"]);
+  check(G, "a price list's IVA, a flyer's promo and a bono read as discounts (21, 20, 10)", [R.parseDiscount(SAMPLES.iva), R.parseDiscount(SAMPLES.flyer), R.parseDiscount(SAMPLES.bono)], [21, 20, 10], "on an open ask, 10 or more is awardWinner: an offer to the customer");
+  check(G, "a two-service menu reads as one quoted price", C.parseQuotedPrice(SAMPLES.twoMenu) !== null, true);
+  check(G, "an agenda reads as an offered time (a taken slot)", C.parseOfferedTime(SAMPLES.agenda), "10:00");
+  check(G, "an hours flyer reads as an away message", C.AUTOREPLY_RE.test(SAMPLES.hours), true, "the v55 photo-vanishes bug");
   global.__R = R;
 }
 
@@ -278,11 +284,44 @@ const hosts = () => S.calls.map((c) => c.u.startsWith("https://graph.facebook.co
   const l2 = `https://jglftdstrowwckwqmpue.supabase.co/functions/v1/wa-bot?media=${encodeURIComponent(STUDIO + "/1764340000001.ogg")}&sig=${await B.replySig(STUDIO)}`;
   check(G, "a long name is shortened; the link and the reply link stay whole", [p2.includes(l2), p2.includes("Reply as the bot: "), /^Centro de Masajes/.test(p2), p2.includes("…: voice note not read, no reply sent."), p2.length <= 300], [true, true, true, true, true]);
   check(G, "a voice note: the card says voice note", [S.cards[0]?.title, /no open request from us/.test((S.cards[0]?.paras || []).join(" "))], ["Centro de Masajes Tradicionales y Terapias Orientales Ficticio sent a voice note the bot could not read", true]);
-  // Nothing saved (a sticker): no link, the chat instead.
+  // Nothing saved (a video): no link, the chat instead.
+  reset();
+  await B.studioMediaUnread(STUDIO, PARTNER, "video", null, false);
+  const p3 = (S.templates[0] || { params: [""] }).params[0];
+  check(G, "a video: no link, open the chat", [S.studio.length, /wa-bot\?media=/.test(p3), /Estudio Ficticio: video not read, no reply sent\. Open the chat on WhatsApp to see it\./.test(p3), (S.cards[0]?.links || []).length, /open the chat on WhatsApp/.test((S.cards[0]?.paras || []).join(" "))], [0, false, true, 0, true]);
+  // A sticker: the card, no page to Jordan's phone (review, 28 Nov).
   reset();
   await B.studioMediaUnread(STUDIO, PARTNER, "sticker", null, false);
-  const p3 = (S.templates[0] || { params: [""] }).params[0];
-  check(G, "a sticker: no link, open the chat", [S.studio.length, /wa-bot\?media=/.test(p3), /Estudio Ficticio: sticker not read, no reply sent\. Open the chat on WhatsApp to see it\./.test(p3), (S.cards[0]?.links || []).length, /open the chat on WhatsApp/.test((S.cards[0]?.paras || []).join(" "))], [0, false, true, 0, true]);
+  check(G, "a sticker: the card only, no WhatsApp alert", [S.studio.length, S.cards.length, S.templates.length], [0, 1, 0]);
+  // A photo the bot read: the card shows the reading and says nothing was
+  // acted on; the alert carries the link.
+  reset();
+  await B.studioMediaUnread(STUDIO, PARTNER, "image", PATH, true, SAMPLES.iva);
+  const rc = S.cards[0] || {};
+  const rp = (S.templates[0] || { params: [""] }).params[0];
+  check(G, "a read photo: one STUDIO PHOTO card quoting what was read, with the photo", [S.cards.length, rc.badge, rc.quote, (rc.links || []).map((l) => l.href)], [1, "STUDIO PHOTO", SAMPLES.iva, [link]]);
+  check(G, "a read photo: the card says nothing in it was acted on and nothing was said back", [/Nothing read in the photo was acted on/.test((rc.paras || []).join(" ")), /no time, price or discount from it goes to a customer/.test((rc.paras || []).join(" ")), /Nothing was said back to them/.test((rc.paras || []).join(" "))], [true, true, true]);
+  check(G, "a read photo: nothing to the studio; one alert with the link, under 300", [S.studio.length, S.templates.length, rp.includes(link), /^Estudio Fic.*: photo read, no action, no reply\. /.test(rp), rp.length <= 300], [0, 1, true, true, true]);
+  // A photo with a caption: the card quotes the caption, and does not claim
+  // nothing was said back (the caption went on as a typed reply).
+  reset();
+  await B.studioMediaUnread(STUDIO, PARTNER, "image", PATH, true, "", "Os paso las tarifas");
+  const cc = S.cards[0] || {};
+  const cp = (S.templates[0] || { params: [""] }).params[0];
+  check(G, "an unread photo with a caption: STUDIO MEDIA card naming the caption, alert with the link", [cc.badge, /Their caption was handled as a typed message: "Os paso las tarifas"/.test((cc.paras || []).join(" ")), /Nothing was said back/.test((cc.paras || []).join(" ")), S.templates.length, cp.includes(link), /photo not read\./.test(cp), /no reply sent/.test(cp)], ["STUDIO MEDIA", true, false, 1, true, true, false]);
+  // One alert per studio in 10 minutes: a second photo gets its card only.
+  reset();
+  S.fetchImpl = async (u) => u.includes("/funnel_events?") ? res(200, [{ id: 1 }]) : res(404, {});
+  await B.studioMediaUnread(STUDIO, PARTNER, "image", PATH, true, SAMPLES.iva);
+  const asked = S.calls.find((c) => c.u.includes("/funnel_events?"))?.u || "";
+  check(G, "alerted in the last 10 minutes: card yes, alert no", [S.cards.length, S.templates.length, /phone=eq\.34000111222&event=eq\.studio_media_alert&created_at=gte\./.test(asked)], [1, 0, true]);
+  reset();
+  await B.studioMediaUnread(STUDIO, PARTNER, "image", PATH, true, SAMPLES.iva);
+  check(G, "the alert is recorded for the 10 minute check", S.events.map((e) => [e.phone, e.event]), [[STUDIO, "studio_media_alert"]]);
+  reset();
+  S.fetchImpl = async (u) => { if (u.includes("/funnel_events?")) throw new Error("db down"); return res(404, {}); };
+  await B.studioMediaUnread(STUDIO, PARTNER, "image", PATH, true, SAMPLES.iva);
+  check(G, "a check that fails lets the alert through", S.templates.length, 1);
   // A fake test number never pages Jordan (notifyJordanWa's own guard).
   reset();
   await B.studioMediaUnread("34600000123", PARTNER, "image", "34600000123/1.jpg", true);
@@ -301,7 +340,7 @@ const branch = branchStart > 0 && branchEnd > branchStart ? botSrc.slice(branchS
   check(G, "found", !!branch, true);
   const R = global.__R;
   const runBranch = async (o) => {
-    const log = { studio: [], replies: [], unread: [], cards: [], away: [] };
+    const log = { studio: [], replies: [], unread: [], cards: [], away: [], ocupado: [] };
     reset();
     const env = {
       msg: o.msg, from: STUDIO, text: o.text, priorLastAt: Date.now() - 20 * 60e3, photo: o.photo || null, voice: o.voice || null,
@@ -315,7 +354,8 @@ const branch = branchStart > 0 && branchEnd > branchStart ? botSrc.slice(branchS
       findPartnerByNumber: async () => PARTNER,
       AUTOREPLY_RE: C.AUTOREPLY_RE, EMAIL_IN_TEXT_RE: C.EMAIL_IN_TEXT_RE,
       isAwayMessage: R.isAwayMessage, BARE_YES_RE: R.BARE_YES_RE, parseDiscount: R.parseDiscount, ourQuestionOpen: R.ourQuestionOpen,
-      ocupadoQuestionOpen: async () => false, studioOcupado: async () => false, ocupadoAwayCard: async () => {},
+      ocupadoQuestionOpen: async () => false, studioOcupado: async (f, t) => { log.ocupado.push(t); return false; }, ocupadoAwayCard: async (f, t) => { log.away.push(t); },
+      studioHasOpenAsk: async () => o.openAsk !== false,
       bareYesAsk: async () => o.bareYes || null,
       handleStudioReply: async (...a) => { log.replies.push(a); },
       founderCard: async (s, c) => { log.cards.push(c.badge); },
@@ -338,29 +378,49 @@ const branch = branchStart > 0 && branchEnd > branchStart ? botSrc.slice(branchS
     return { ...log, quiet: env.quietThisTurn, returned: out instanceof Response ? out.status : out, alerts: S.templates.map((t) => t.params[0]), cardsB: S.cards.map((c) => c.badge) };
   };
   const PATH = `${STUDIO}/1764340000000.jpg`;
-  // (a) a readable photo is the studio's reply
-  const t1 = B.photoText("", MENU);
-  const a = await runBranch({ msg: { type: "image", image: { id: "M1" } }, text: t1, photo: { path: PATH, text: MENU, caption: "" } });
-  check(G, "readable photo: read as a reply (handleStudioReply with the photo's words)", a.replies, [[STUDIO, "", "", t1, PARTNER]]);
-  check(G, "readable photo: nothing said to the studio here, no media alert", [a.studio, a.unread.length, a.alerts], [[], 0, []]);
-  check(G, "readable photo: answered like a typed reply (the holding line may follow, never the photo line)", [a.quiet, a.returned], [false, 200]);
-  // (b) the same words typed and in a photo: "Sí" is the yes tap only when typed
+  // The handler sets text to the caption alone (group 8); these runs give the
+  // branch exactly that.
+  // (a) a readable photo with no caption: its reading goes to Jordan's card,
+  // never to the studio path (no offer, price, discount, ocupado or away guess)
+  const a = await runBranch({ msg: { type: "image", image: { id: "M1" } }, text: "", photo: { path: PATH, text: MENU, caption: "" } });
+  check(G, "readable photo: not handled as a reply (no handleStudioReply, no ocupado)", [a.replies, a.ocupado], [[], []]);
+  check(G, "readable photo: one STUDIO PHOTO card quoting the reading, one alert with the link", [a.unread.map((x) => [x[2], x[3], x[4], x[5]]), a.cardsB, a.alerts.length, /wa-bot\?media=34000111222%2F1764340000000\.jpg&sig=/.test(a.alerts[0] || "")], [[["image", PATH, true, MENU]], ["STUDIO PHOTO"], 1, true]);
+  check(G, "readable photo: nothing said to the studio, quiet turn (no holding line)", [a.studio, a.quiet, a.returned], [[], true, 200]);
+  // (b) the readings that the real parsers would have acted on (group 5), on
+  // an open ask: none reaches handleStudioReply, so no awardWinner, no
+  // forwardOffer, no quoted_price, no partners.mc_discount_pct write
+  for (const [k, read] of Object.entries(SAMPLES)) {
+    const r = await runBranch({ msg: { type: "image", image: { id: "M1" } }, text: "", photo: { path: PATH, text: read, caption: "" } });
+    check(G, `photo reading "${k}": no reply path, no away drop; Jordan's card with the reading`, [r.replies.length, r.ocupado.length, r.away.length, r.studio, r.cardsB, r.unread[0]?.[5]], [0, 0, 0, [], ["STUDIO PHOTO"], read]);
+  }
+  const doc = await runBranch({ msg: { type: "document", document: { id: "D1", mime_type: "image/png" } }, text: "", photo: { path: `${STUDIO}/1764340000003.png`, text: SAMPLES.iva, caption: "" } });
+  check(G, "a photo sent as a document: the same (a photo card, not a file)", [doc.replies.length, doc.unread.map((x) => x[2]), doc.cardsB], [0, ["image"], ["STUDIO PHOTO"]]);
+  // (c) a caption is the studio's own words: it goes on as typed, alone
   const typed = await runBranch({ msg: { type: "text" }, text: "Sí", bareYes: "9126" });
-  const pic = await runBranch({ msg: { type: "image", image: { id: "M1" } }, text: B.photoText("", "Sí"), photo: { path: PATH, text: "Sí", caption: "" }, bareYes: "9126" });
-  check(G, "typed Sí: the yes tap; a photo of Sí: a plain reply", [typed.replies[0]?.[1], pic.replies[0]?.[1]], ["studio_confirm_9126", ""]);
-  // (c) an unreadable photo: no studio message, Jordan alerted with the link
+  check(G, "typed Sí: the yes tap", typed.replies[0]?.[1], "studio_confirm_9126");
+  const cap = await runBranch({ msg: { type: "image", image: { id: "M1", caption: "Os paso las tarifas" } }, text: "Os paso las tarifas", photo: { path: PATH, text: SAMPLES.iva, caption: "Os paso las tarifas" } });
+  check(G, "captioned photo: handleStudioReply gets the caption only, never the reading", cap.replies, [[STUDIO, "", "", "Os paso las tarifas", PARTNER]]);
+  check(G, "captioned photo: Jordan still gets the photo card with the reading and the caption", [cap.unread.map((x) => [x[2], x[3], x[5], x[6]]), cap.cardsB.includes("STUDIO PHOTO"), cap.alerts.length], [[["image", PATH, SAMPLES.iva, "Os paso las tarifas"]], true, 1]);
+  // (d) review, 28 Nov: a captioned photo whose reading failed (IMAGE_READ off,
+  // no key, the model down, a gif) used to reach no card at all
+  const capUnread = await runBranch({ msg: { type: "image", image: { id: "M1", caption: "Os paso las tarifas" } }, text: "Os paso las tarifas", photo: { path: PATH, text: "", caption: "Os paso las tarifas" } });
+  check(G, "captioned unread photo: the caption goes on; one STUDIO MEDIA card and one alert with the link", [capUnread.replies.map((x) => x[3]), capUnread.cardsB.filter((b) => b === "STUDIO MEDIA").length, capUnread.alerts.length, /wa-bot\?media=34000111222%2F1764340000000\.jpg&sig=/.test(capUnread.alerts[0] || "")], [["Os paso las tarifas"], 1, 1, true]);
+  // (e) a caption in away-message wording is dropped as typed; the photo is not
+  const capAway = await runBranch({ msg: { type: "image", image: { id: "M1", caption: "Gracias por contactar, te responderemos lo antes posible" } }, text: "Gracias por contactar, te responderemos lo antes posible", lastOutAgo: 10_000, photo: { path: PATH, text: SAMPLES.hours, caption: "Gracias por contactar, te responderemos lo antes posible" } });
+  check(G, "away-message caption: dropped as typed, the photo still reaches Jordan", [capAway.replies.length, capAway.quiet, capAway.cardsB.includes("STUDIO PHOTO"), capAway.alerts.length], [0, true, true, 1]);
+  // (f) an unreadable photo: no studio message, Jordan alerted with the link
   const c = await runBranch({ msg: { type: "image", image: { id: "M1" } }, text: "", photo: { path: PATH, text: "", caption: "" } });
   check(G, "unreadable photo: no message to the studio", c.studio, [], "it used to get STUDIO_MEDIA_LINE");
   check(G, "unreadable photo: quiet turn (no holding line either)", c.quiet, true);
   check(G, "unreadable photo: studioMediaUnread with the saved path and the open ask", c.unread.map((x) => [x[0], x[1].business_name, x[2], x[3], x[4]]), [[STUDIO, "Estudio Ficticio", "image", PATH, true]]);
   check(G, "unreadable photo: Jordan's card and WhatsApp alert with the link", [c.cardsB, c.alerts.length, /wa-bot\?media=34000111222%2F1764340000000\.jpg&sig=/.test(c.alerts[0] || "")], [["STUDIO MEDIA"], 1, true]);
   check(G, "unreadable photo: not read as a reply", c.replies, []);
-  // (d) an untranscribed voice note and a sticker
+  // (g) an untranscribed voice note and a sticker
   const d = await runBranch({ msg: { type: "audio", audio: { id: "A1" } }, text: "", voice: { path: `${STUDIO}/1764340000002.ogg`, transcript: "" } });
   check(G, "untranscribed voice note: no studio message, alert with the recording", [d.studio, d.unread.map((x) => [x[2], x[3]]), /\.ogg&sig=/.test(d.alerts[0] || "")], [[], [["audio", `${STUDIO}/1764340000002.ogg`]], true]);
   const e = await runBranch({ msg: { type: "sticker", sticker: { id: "S1" } }, text: "", openAsk: true });
-  check(G, "sticker: no studio message, no open-ask lookup claim, alert without a link", [e.studio, e.unread.map((x) => [x[2], x[3], x[4]]), e.alerts.length], [[], [["sticker", null, false]], 1]);
-  // (e) a typed reply is untouched
+  check(G, "sticker: no studio message, no open-ask claim, the card but no phone alert", [e.studio, e.unread.map((x) => [x[2], x[3], x[4]]), e.cardsB, e.alerts.length], [[], [["sticker", null, false]], ["STUDIO MEDIA"], 0]);
+  // (h) a typed reply is untouched
   const f = await runBranch({ msg: { type: "text" }, text: "Podemos a las 18:00, 45€" });
   check(G, "a typed reply goes on as before", [f.replies.map((x) => x[3]), f.studio, f.unread.length], [["Podemos a las 18:00, 45€"], [], 0]);
 }
@@ -380,13 +440,26 @@ const branch = branchStart > 0 && branchEnd > branchStart ? botSrc.slice(branchS
   const imgAt = at("const img = inboundImage(msg);");
   const logAt = at('await logMsg(from, "in", (voice ?');
   const lettersAt = at("if (text && !replyId && await handleLetterReply(from, text)");
-  const assignAt = at("if (photo && !text) text = photoText(photo.caption, photo.text);");
+  const assignAt = at("if (photo && !text) text = photo.caption;");
   const partnerAt = at("const partner = await findPartnerByNumber(digitsOf(from));\n      if (partner) {");
   check(G, "read next to the voice note, before the log row", [voiceAt > 0, imgAt > voiceAt, logAt > imgAt], [true, true, true]);
-  check(G, "the photo's words become text after the letters check and before the studio branch", [lettersAt > logAt, assignAt > lettersAt, partnerAt > assignAt], [true, true, true], "a model's reading of a picture is never a BAJA");
+  check(G, "the caption (alone) becomes text after the letters check and before the studio branch", [lettersAt > logAt, assignAt > lettersAt, partnerAt > assignAt], [true, true, true]);
+  // Review, 28 Nov: what the model read is never the studio's words. It is
+  // used in three places only: the log row and the two photo cards.
+  const readUses = code.split("\n").filter((l) => /\bphoto\??\.text\b/.test(l));
+  check(G, "the reading is used only by the log row and studioMediaUnread", [readUses.length, readUses.every((l) => /await logMsg\(from, "in"|await studioMediaUnread\(/.test(l))], [3, true], "never text, freeText or a parser");
+  check(G, "photoText (the reading as the studio's reply) is gone", /\bphotoText\b/.test(code), false);
   const logLine = (code.match(/^.*await logMsg\(from, "in", \(voice \?.*$/m) || [""])[0];
   check(G, "the log row: [photo <path>] <caption> <read text>", /\(photo \? `\[photo\$\{photo\.path \? " " \+ photo\.path : ""\}\]\$\{\[photo\.caption, photo\.text\]\.filter\(Boolean\)/.test(logLine), true, "it was \"[tap: ]\"");
-  check(G, "the media branch calls studioMediaUnread with the saved path", /await studioMediaUnread\(from, partner, String\(msg\.type\), photo\?\.path \|\| voice\?\.path \|\| null, asked\);/.test(branch), true);
+  check(G, "the media branch calls studioMediaUnread with the saved path and the reading", /await studioMediaUnread\(from, partner, photo \? "image" : String\(msg\.type\), photo\?\.path \|\| voice\?\.path \|\| null, asked, photo\?\.text \|\| ""\);/.test(branch), true);
+  check(G, "a captioned photo reaches Jordan after its caption is handled", /if \(photo && text\) await studioMediaUnread\(from, partner, "image", photo\.path, await studioHasOpenAsk\(from\), photo\.text, photo\.caption\);\n\s*return new Response\("OK", \{ status: 200 \}\);/.test(branch), true);
+  // The inbox list and the fallback alert (review, 28 Nov).
+  const tidy = between(botSrc, "  const tidy = (b: string) => {", "  const card = async (i: Item) => {");
+  const tidyFn = tidy ? new Function(`${stripTypeScriptTypes(tidy.replace(/prettyLogged\(t\)/g, "t"))}\nreturn tidy;`)() : () => "MISSING";
+  check(G, "the inbox list shows a photo row without its storage path", [tidyFn("[photo 34000111222/1764340000000.jpg] Os paso las tarifas Tarifas 45€"), tidyFn("[photo]"), tidyFn("[photo 34000111222/1764340000000.jpg]")], ["📷 Os paso las tarifas Tarifas 45€", "📷 Photo", "📷 Photo"]);
+  const fbAt = code.indexOf("const isReaction = m?.type === \"reaction\";");
+  const fbHead = fbAt > 0 ? code.slice(Math.max(0, fbAt - 400), fbAt) : "";
+  check(G, "the fallback alert's \"said\" names a photo and its caption, not \"They said: \"", [/const pic = inboundImage\(m\);/.test(fbHead), /const said = String\(m\?\.text\?\.body \|\| m\?\.button\?\.text \|\| \(pic \? `\[photo\]\$\{pic\.caption \? " " \+ pic\.caption : ""\}` : ""\)\);/.test(fbHead)], [true, true]);
   const mediaBranch = between(branch, "else if (MEDIA_TYPES.includes(String(msg.type))) {", "else console.log(");
   check(G, "the media branch says nothing to the studio", [!!mediaBranch, /sendText|studioSay|sendTemplate|tellStudio|studioAviso/.test(mediaBranch)], [true, false]);
   const unread = lift(botSrc, "async function studioMediaUnread(");

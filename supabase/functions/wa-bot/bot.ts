@@ -311,7 +311,7 @@ async function studioMediaUnread(from: string, partner: { id: string; business_n
   const recent = await fetch(`${SUPABASE_URL}/rest/v1/funnel_events?phone=eq.${digitsOf(from)}&event=eq.studio_media_alert&created_at=gte.${since}&select=id&limit=1`, { headers: H() }).then((r) => r.json()).catch(() => []);
   if (Array.isArray(recent) && recent.length) return;
   await logEvent(from, "studio_media_alert", { type, read: !!read });
-  const tail = read ? `: photo read (on the card), nothing done with it${cap ? "" : ", no reply sent"}.` : `: ${what} not read${cap ? "" : ", no reply sent"}.`;
+  const tail = read ? `: photo read, no action${cap ? "" : ", no reply"}.` : `: ${what} not read${cap ? "" : ", no reply sent"}.`;
   let name = partner.business_name || "+" + digitsOf(from);
   if (link) {
     const room = 300 - ` Reply as the bot: ${await replyUrl(from)}`.length - link.length - 1 - tail.length;
@@ -2159,6 +2159,10 @@ async function inboxPage(url: URL): Promise<Response> {
   const shown = items.filter((i) => (tab === "studios") === i.studio);
   const tidy = (b: string) => {
     let t = b.replace(/\s*\[via ad\]$/, "");
+    // v223 review (28 Nov): a studio's photo row, without its storage path
+    // (before the template rule, which reads a bare "[photo]" as a template).
+    const ph = /^\[photo(?: [^\]\s]*)?\]\s*([\s\S]*)$/.exec(t);
+    if (ph) return ph[1] ? `📷 ${ph[1]}` : "📷 Photo";
     // Templates are logged as "[template name/lang] ..." or "[name] ...".
     const tm = /^\[(?:template )?([a-z0-9_]+)(?:\/[a-z_]+)?\]\s*(.*)$/s.exec(t);
     const TPL: Record<string, string> = { solicitud_reserva: "Booking request sent", booking_unfinished: "Unfinished-booking reminder", founder_alert: "Alert to Jordan" };
@@ -12193,7 +12197,10 @@ const handleTurn = async (req: Request) => {
     const p = raw ? JSON.parse(raw) : null;
     const m = p?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
     const from = digitsOf(String(m?.from || ""));
-    const said = String(m?.text?.body || m?.button?.text || "");
+    // v223 review (28 Nov): a photo is named, with its caption (the sender's
+    // own words), so Jordan's alert no longer ends "They said: ".
+    const pic = inboundImage(m);
+    const said = String(m?.text?.body || m?.button?.text || (pic ? `[photo]${pic.caption ? " " + pic.caption : ""}` : ""));
     const isReaction = m?.type === "reaction";
     if (m && from && !sentThisTurn && !quietThisTurn && !isReaction && !TEST_PHONES.includes(from)) {
       const s = await getSession(from);
