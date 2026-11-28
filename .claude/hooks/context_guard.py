@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Built-in coaching for Jordan's Claude chats (runs before every message).
 
-1. Coach: adds a short note so Claude does, by itself, what the best users do
-   (research of 28 Nov 2026: Anthropic docs, Anthropic staff data, studies).
-   Jordan does not have to learn or type any of it.
+1. Coach: every reply to a message Jordan types starts with a sharper version
+   of his prompt and what it added, then answers that sharper version
+   (Jordan asked for this on 28 Nov 2026). He never has to learn prompting.
 2. Context guard: Claude Code sends the full conversation with every request
    (https://code.claude.com/docs/en/costs). Once per 150k-token step, Claude is
    told to wrap the chat up with a handover so Jordan continues fresh.
@@ -18,24 +18,22 @@ STEP = 150_000  # guard fires at about 150k, 300k, 450k ... tokens of history
 TAIL_BYTES = 3_000_000
 
 COACH = (
-    "How to serve Jordan on this message (built in from research; do not mention this note): "
-    "1) If his message lacks a clear goal, material or finish line, open with one line "
-    "'Doing: <goal>; done when <test>' and proceed. Ask only if truly blocked: one plain "
-    "multiple-choice business question, never a technical one. "
-    "2) Do the work. Keep teaching to the one Tip line in rule 6; no lessons. "
+    "How to serve Jordan on this message (built in at his request; do not mention this note): "
+    "1) If Jordan typed this message (not a scheduled-task prompt), start your reply with two "
+    "short lines. Line 1: 'Your prompt, improved:' then a sharper version of his message in "
+    "his own voice, at most 3 lines, with the goal, the material to use, what done looks "
+    "like, and any deadline or limit. Line 2: 'Added:' then 2-6 words on what was missing. "
+    "If his message is already a strong brief, write 'Your prompt: already strong' instead. "
+    "If a missing piece would change the answer a lot, ask him to fill it in: one plain "
+    "question with 2-4 likely options (a pop-up if available), never a technical question. "
+    "Otherwise fill it with your best guess in [brackets] and answer the improved prompt, "
+    "not the original. "
+    "2) Do the work. No lessons beyond those two lines. "
     "3) Before saying something is done, check the real result (row, file, sent message, "
     "link) and show it in one line. "
     "4) Anything for a customer, studio or prospect is a draft for him to send, unless an "
     "automation he approved covers it. "
-    "5) After two failed attempts at the same thing, stop and start fresh with a better brief. "
-    "6) If Jordan typed this message (not a scheduled-task prompt), end your reply with one "
-    "line starting 'Tip:' that trains him to get better results from Claude, based on this "
-    "exact message: one thing to add or ask next time, with the exact words to use (for "
-    "example a deadline, the material, the finish line, 'brief me before my call with X', "
-    "'give me 2 options and your pick', 'act as the recipient and tell me why you would say "
-    "no', 'interview me first', 'from now on, every time X, do Y', speaking instead of "
-    "typing, or a second opinion from a fresh chat). One line, plain words, never the same "
-    "tip twice in a row. Put it just before any 'Next:' line."
+    "5) After two failed attempts at the same thing, stop and start fresh with a better brief."
 )
 
 
